@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#c1121f">
+  <title>Barbeque Pizza — بيتزا باربيكيو</title>
+  <link rel="stylesheet" href="/static/css/main.css">
+  <link rel="stylesheet" href="/static/css/widget.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- Header -->
+  <header class="site-header">
+    <div class="container header-inner">
+      <a href="/" class="brand">
+        <div class="brand-logo">🍕</div>
+        <div class="brand-text">
+          <div class="brand-name" id="brand-name">بيتزا باربيكيو</div>
+          <div class="brand-tag" id="brand-tag">Barbeque Pizza</div>
+        </div>
+      </a>
+      <nav class="header-actions">
+        <a href="#menu" class="header-link">المنيو</a>
+        <a href="#contact" class="header-link">تواصل</a>
+        <button class="cart-btn" id="open-cart" aria-label="السلة">
+          <span class="cart-icon">🛒</span>
+          <span class="cart-count" id="cart-count">0</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="container hero-inner">
+      <div class="hero-text">
+        <h1 id="hero-title">ألذ بيتزا في المدينة</h1>
+        <p id="hero-sub">اطلب أونلاين واستمتع بطعم لا يُقاوم — تسليم سريع، مكونات طازجة</p>
+        <div class="hero-cta">
+          <a href="#menu" class="btn primary">تصفح المنيو</a>
+          <button class="btn ghost" id="hero-chat">اسأل مساعدنا الذكي</button>
+        </div>
+        <div class="hero-badges" id="hero-badges"></div>
+      </div>
+      <div class="hero-visual">🍕</div>
+    </div>
+  </section>
+
+  <!-- Filters -->
+  <section class="filters-wrap" id="menu">
+    <div class="container">
+      <div class="filters-header">
+        <h2>المنيو</h2>
+        <div class="search-wrap">
+          <input type="search" id="search" placeholder="ابحث عن صنف..." />
+        </div>
+      </div>
+      <div class="chips" id="chips"></div>
+      <div class="quick-filters">
+        <label class="chip-toggle">
+          <input type="checkbox" id="filter-veg"> <span>نباتي 🥗</span>
+        </label>
+        <label class="chip-toggle">
+          <input type="checkbox" id="filter-spicy"> <span>حار 🌶️</span>
+        </label>
+      </div>
+    </div>
+  </section>
+
+  <!-- Menu grid -->
+  <main class="container menu-main">
+    <div id="menu-content"></div>
+    <div id="menu-empty" class="empty hidden">
+      لا توجد أصناف تطابق البحث. جرب كلمة أخرى.
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="site-footer" id="contact">
+    <div class="container footer-inner">
+      <div>
+        <div class="footer-title" id="footer-name">بيتزا باربيكيو</div>
+        <div class="footer-tag">Barbeque Pizza</div>
+      </div>
+      <div class="footer-info">
+        <div id="footer-phone"></div>
+        <div id="footer-address"></div>
+        <div id="footer-hours"></div>
+      </div>
+      <div class="footer-copy">© 2026 جميع الحقوق محفوظة</div>
+    </div>
+  </footer>
+
+  <!-- Item detail modal -->
+  <div class="modal-overlay hidden" id="item-modal">
+    <div class="modal-panel" role="dialog" aria-modal="true">
+      <button class="modal-close" id="item-close" aria-label="إغلاق">✕</button>
+      <div class="modal-img" id="modal-img"></div>
+      <div class="modal-body">
+        <div class="modal-tags" id="modal-tags"></div>
+        <h3 id="modal-name">—</h3>
+        <div class="modal-desc" id="modal-desc"></div>
+        <div id="modal-sizes"></div>
+        <div class="modal-qty">
+          <span>الكمية:</span>
+          <div class="qty-ctrl">
+            <button id="qty-dec">−</button>
+            <span id="qty-value">1</span>
+            <button id="qty-inc">+</button>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <div class="modal-total" id="modal-total">— شيكل</div>
+          <button class="btn primary big" id="add-to-cart">أضف إلى السلة</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cart drawer -->
+  <div class="drawer-overlay hidden" id="cart-drawer">
+    <div class="drawer-panel">
+      <div class="drawer-header">
+        <h3>سلة الطلبات</h3>
+        <button class="modal-close" id="cart-close" aria-label="إغلاق">✕</button>
+      </div>
+      <div class="drawer-body" id="cart-body"></div>
+      <div class="drawer-footer">
+        <div class="cart-totals" id="cart-totals"></div>
+        <button class="btn primary big block" id="checkout-btn">إتمام الطلب</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Checkout modal -->
+  <div class="modal-overlay hidden" id="checkout-modal">
+    <div class="modal-panel small">
+      <button class="modal-close" id="checkout-close" aria-label="إغلاق">✕</button>
+      <div class="modal-body">
+        <h3>معلومات الطلب</h3>
+        <form id="order-form" class="form">
+          <label>الاسم <input type="text" name="customer_name" required></label>
+          <label>رقم الهاتف <input type="tel" name="phone" required></label>
+          <label>العنوان <input type="text" name="address" placeholder="اختياري إذا كان استلام"></label>
+          <label>ملاحظات <textarea name="notes" rows="2" placeholder="مثلاً: بدون بصل"></textarea></label>
+          <div class="order-summary" id="order-summary"></div>
+          <button type="submit" class="btn primary big block">تأكيد الطلب</button>
+        </form>
+        <div id="order-success" class="success hidden"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chat widget -->
+  <button class="chat-fab" id="chat-fab" aria-label="فتح المحادثة">
+    <span class="chat-fab-icon">💬</span>
+    <span class="chat-fab-text">اسألني</span>
+  </button>
+
+  <div class="chat-panel hidden" id="chat-panel" role="dialog" aria-label="محادثة">
+    <div class="chat-header">
+      <div class="chat-header-info">
+        <div class="chat-avatar">🤖</div>
+        <div>
+          <div class="chat-title">مساعد بيتزا باربيكيو</div>
+          <div class="chat-status"><span class="dot-online"></span> متصل الآن</div>
+        </div>
+      </div>
+      <button class="chat-close" id="chat-close" aria-label="إغلاق">✕</button>
+    </div>
+    <div class="chat-body" id="chat-body"></div>
+    <div class="chat-quick" id="chat-quick"></div>
+    <form class="chat-input" id="chat-form">
+      <input type="text" id="chat-input" placeholder="اكتب سؤالك..." autocomplete="off" maxlength="500">
+      <button type="submit" id="chat-send" aria-label="إرسال">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M22 2L11 13M22 2L15 22L11 13M22 2L2 9L11 13"/>
+        </svg>
+      </button>
+    </form>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="/static/js/main.js"></script>
+  <script src="/static/js/widget.js"></script>
+</body>
+</html>

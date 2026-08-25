@@ -1,0 +1,290 @@
+{
+  "restaurant": {
+    "name": "بيتزا باربيكيو",
+    "name_en": "Barbeque Pizza",
+    "tagline": "Barbeque Pizza",
+    "phone": null,
+    "address": null,
+    "hours": null,
+    "delivery": {
+      "available": null,
+      "fee": null,
+      "currency": "شيكل",
+      "min_order": null,
+      "estimated_time": null
+    }
+  },
+  "size_labels": {
+    "S": "صغير",
+    "M": "وسط",
+    "L": "كبير",
+    "XL": "عائلي"
+  },
+  "categories": [
+    {
+      "name": "بيتزا الأجبان",
+      "items": [
+        {
+          "id": "c1",
+          "name": "بيتزا مكس الأجبان",
+          "name_en": "Mix Cheese Pizza",
+          "description": "صلصة البيتزا، جبنة موزاريلا، جبنة صفراء، جبنة بيضاء",
+          "ingredients": ["صلصة البيتزا", "جبنة موزاريلا", "جبنة صفراء", "جبنة بيضاء"],
+          "sizes": [
+            { "name": "S", "price": 35 },
+            { "name": "M", "price": 59 },
+            { "name": "L", "price": 69 },
+            { "name": "XL", "price": 80 }
+          ],
+          "vegetarian": true
+        },
+        {
+          "id": "c2",
+          "name": "بيتزا الثوم والجبنة",
+          "name_en": "Garlic & Cheese Pizza",
+          "description": "عجينة خاصة، صلصة الثوم المميزة، جبنة صفراء، جبنة موزاريلا",
+          "ingredients": ["عجينة خاصة", "صلصة الثوم المميزة", "جبنة صفراء", "جبنة موزاريلا"],
+          "sizes": [
+            { "name": "S", "price": 28 },
+            { "name": "M", "price": 45 },
+            { "name": "L", "price": 55 },
+            { "name": "XL", "price": 70 }
+          ],
+          "vegetarian": true
+        },
+        {
+          "id": "c3",
+          "name": "بيتزا مرجريتا",
+          "name_en": "Margarita Pizza",
+          "description": "صلصة البيتزا، جبنة صفراء، جبنة موزاريلا",
+          "ingredients": ["صلصة البيتزا", "جبنة صفراء", "جبنة موزاريلا"],
+          "sizes": [
+            { "name": "S", "price": 28 },
+            { "name": "M", "price": 45 },
+            { "name": "L", "price": 55 },
+            { "name": "XL", "price": 70 }
+          ],
+          "vegetarian": true
+        },
+        {
+          "id": "c4",
+          "name": "بيتزا مدترينيا",
+          "name_en": "Mediterranee Pizza",
+          "description": "زيت زيتون، جبنة بيضاء، زعتر بلدي، شرائح بندورة، أوريجانو",
+          "ingredients": ["زيت زيتون", "جبنة بيضاء", "زعتر بلدي", "شرائح بندورة", "أوريجانو"],
+          "sizes": [
+            { "name": "S", "price": 30 },
+            { "name": "M", "price": 49 },
+            { "name": "L", "price": 59 },
+            { "name": "XL", "price": 75 }
+          ],
+          "vegetarian": true
+        },
+        {
+          "id": "c5",
+          "name": "بيتزا جبنة بيضاء",
+          "name_en": "White Cheese Pizza",
+          "description": "صلصة البيتزا، جبنة بيضاء، فلفل حلو، زيتون أسود، شرائح بندورة",
+          "ingredients": ["صلصة البيتزا", "جبنة بيضاء", "فلفل حلو", "زيتون أسود", "شرائح بندورة"],
+          "sizes": [
+            { "name": "S", "price": 32 },
+            { "name": "M", "price": 55 },
+            { "name": "L", "price": 65 },
+            { "name": "XL", "price": 75 }
+          ],
+          "vegetarian": true
+        }
+      ]
+    },
+    {
+      "name": "بيتزا اللحوم والخضار",
+      "items": [
+        {
+          "id": "m1",
+          "name": "بيتزا روست بيف",
+          "name_en": "Roast Beef Pizza",
+          "description": "صلصة البيتزا، شرائح روست بيف",
+          "ingredients": ["صلصة البيتزا", "شرائح روست بيف"],
+          "sizes": [
+            { "name": "S", "price": 35 },
+            { "name": "M", "price": 65 },
+            { "name": "L", "price": 75 },
+            { "name": "XL", "price": 85 }
+          ]
+        },
+        {
+          "id": "m2",
+          "name": "بيتزا روست بيف مع خضار",
+          "name_en": "Roast Beef & Vegetables Pizza",
+          "description": "صلصة البيتزا، شرائح روست بيف، ماشروم، فلفل حلو، زيتون، ذرة",
+          "ingredients": ["صلصة البيتزا", "شرائح روست بيف", "ماشروم", "فلفل حلو", "زيتون", "ذرة"],
+          "sizes": [
+            { "name": "S", "price": 40 },
+            { "name": "M", "price": 70 },
+            { "name": "L", "price": 80 },
+            { "name": "XL", "price": 90 }
+          ]
+        },
+        {
+          "id": "m3",
+          "name": "بيتزا سلامي",
+          "name_en": "Salami Pizza",
+          "description": "صلصة البيتزا، سلامي إيطالي عجل",
+          "ingredients": ["صلصة البيتزا", "سلامي إيطالي عجل"],
+          "sizes": [
+            { "name": "S", "price": 30 },
+            { "name": "M", "price": 55 },
+            { "name": "L", "price": 65 },
+            { "name": "XL", "price": 75 }
+          ]
+        },
+        {
+          "id": "m4",
+          "name": "بيتزا سلامي مع خضار",
+          "name_en": "Salami & Vegetables Pizza",
+          "description": "صلصة البيتزا، سلامي، ماشروم، زيتون، فلفل حلو، ذرة",
+          "ingredients": ["صلصة البيتزا", "سلامي", "ماشروم", "زيتون", "فلفل حلو", "ذرة"],
+          "sizes": [
+            { "name": "S", "price": 32 },
+            { "name": "M", "price": 59 },
+            { "name": "L", "price": 69 },
+            { "name": "XL", "price": 80 }
+          ]
+        },
+        {
+          "id": "m5",
+          "name": "بيتزا بيبروني",
+          "name_en": "Pepperoni Pizza",
+          "description": "صلصة البيتزا، بيبروني إيطالي عجل",
+          "ingredients": ["صلصة البيتزا", "بيبروني إيطالي عجل"],
+          "sizes": [
+            { "name": "S", "price": 30 },
+            { "name": "M", "price": 55 },
+            { "name": "L", "price": 65 },
+            { "name": "XL", "price": 75 }
+          ]
+        },
+        {
+          "id": "m6",
+          "name": "بيتزا بيبروني مع خضار",
+          "name_en": "Pepperoni & Vegetables Pizza",
+          "description": "صلصة البيتزا، بيبروني إيطالي عجل، زيتون أسود/أخضر، فلفل حلو، ماشروم، ذرة",
+          "ingredients": ["صلصة البيتزا", "بيبروني إيطالي عجل", "زيتون أسود/أخضر", "فلفل حلو", "ماشروم", "ذرة"],
+          "sizes": [
+            { "name": "S", "price": 32 },
+            { "name": "M", "price": 59 },
+            { "name": "L", "price": 69 },
+            { "name": "XL", "price": 80 }
+          ]
+        },
+        {
+          "id": "m7",
+          "name": "بيتزا سلامي مكس",
+          "name_en": "Mix Salami Pizza",
+          "description": "صلصة البيتزا، سلامي، بيبروني",
+          "ingredients": ["صلصة البيتزا", "سلامي", "بيبروني"],
+          "sizes": [
+            { "name": "S", "price": 30 },
+            { "name": "M", "price": 55 },
+            { "name": "L", "price": 65 },
+            { "name": "XL", "price": 75 }
+          ]
+        },
+        {
+          "id": "m8",
+          "name": "مكس بيتزا",
+          "name_en": "Mix Pizza",
+          "description": "صلصة البيتزا، سلامي، بيبروني، ماشروم، زيتون أسود/أخضر، فلفل حلو، ذرة",
+          "ingredients": ["صلصة البيتزا", "سلامي", "بيبروني", "ماشروم", "زيتون أسود/أخضر", "فلفل حلو", "ذرة"],
+          "sizes": [
+            { "name": "S", "price": 35 },
+            { "name": "M", "price": 65 },
+            { "name": "L", "price": 75 },
+            { "name": "XL", "price": 85 }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "مقبلات وسلطات",
+      "items": [
+        {
+          "id": "a1",
+          "name": "أجنحة دجاج",
+          "name_en": "Chicken Wings",
+          "description": "8 قطع",
+          "price": 18
+        },
+        {
+          "id": "a2",
+          "name": "أصابع دجاج",
+          "name_en": "Chicken Fingers",
+          "description": "8 قطع مع بطاطا",
+          "price": 18
+        },
+        {
+          "id": "a3",
+          "name": "أصابع جبنة",
+          "name_en": "Cheese Sticks",
+          "description": "6 قطع",
+          "price": 18
+        },
+        {
+          "id": "s1",
+          "name": "سلطة سيزر مع دجاج",
+          "name_en": "Caesar Salad with Chicken",
+          "price": 30
+        },
+        {
+          "id": "s2",
+          "name": "سلطة يونانية",
+          "name_en": "Greek Salad",
+          "price": 25
+        }
+      ]
+    },
+    {
+      "name": "ساندويشات",
+      "items": [
+        {
+          "id": "sw1",
+          "name": "ستيك فيلادلفيا بالجبنة",
+          "name_en": "Philadelphia Cheese Steak",
+          "description": "فيليه لحم، جبنة، بصل، فلفل حلو، خس، بندورة، مخلل، مايونيز، كاتشب",
+          "price": 34
+        },
+        {
+          "id": "sw2",
+          "name": "برغر لحمة",
+          "name_en": "Beef Burger",
+          "description": "لحم بقري، مايونيز، كاتشب، خس، بندورة، مخلل، بصل",
+          "price": 25
+        }
+      ]
+    },
+    {
+      "name": "مشروبات باردة",
+      "items": [
+        {
+          "id": "d1",
+          "name": "كولا بأنواعها",
+          "name_en": "All Kinds of Cola",
+          "price": 3
+        },
+        {
+          "id": "d2",
+          "name": "عصائر مشكلة",
+          "name_en": "Juices",
+          "price": 3
+        },
+        {
+          "id": "d3",
+          "name": "مياه معدنية",
+          "name_en": "Mineral Water",
+          "price": 3
+        }
+      ]
+    }
+  ],
+  "offers": []
+}

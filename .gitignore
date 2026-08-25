@@ -1,0 +1,16 @@
+.env
+.env.local
+.env.production
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+data/*.db
+data/*.db-wal
+data/*.db-shm
+.DS_Store
+.vscode/
+.idea/

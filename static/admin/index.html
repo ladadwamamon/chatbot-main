@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#1f2937">
+  <title>لوحة الإدارة — Barbeque Pizza</title>
+  <link rel="stylesheet" href="/static/admin/admin.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- Login screen -->
+  <div id="login-screen" class="login-screen hidden">
+    <div class="login-card">
+      <div class="login-logo">🍕</div>
+      <h1>لوحة الإدارة</h1>
+      <p>سجّل الدخول للمتابعة</p>
+      <form id="login-form">
+        <input type="password" id="login-password" placeholder="كلمة المرور" required autofocus>
+        <button type="submit" class="btn primary block">دخول</button>
+        <div id="login-error" class="error-msg hidden"></div>
+      </form>
+      <a href="/" class="login-back">← الرجوع للموقع</a>
+    </div>
+  </div>
+
+  <!-- App -->
+  <div id="app" class="app hidden">
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-logo">🍕</div>
+        <div>
+          <div class="brand-name">الإدارة</div>
+          <div class="brand-tag">Barbeque Pizza</div>
+        </div>
+      </div>
+      <nav class="side-nav">
+        <a href="#/dashboard" data-view="dashboard">📊 <span>الملخص</span></a>
+        <a href="#/menu" data-view="menu">🍕 <span>المنيو</span></a>
+        <a href="#/categories" data-view="categories">📂 <span>الفئات</span></a>
+        <a href="#/orders" data-view="orders">🧾 <span>الطلبات</span> <span class="dot" id="badge-orders" hidden></span></a>
+        <a href="#/chats" data-view="chats">💬 <span>المحادثات</span></a>
+        <a href="#/errors" data-view="errors">🐛 <span>الأخطاء</span> <span class="dot" id="badge-errors" hidden></span></a>
+        <a href="#/settings" data-view="settings">⚙️ <span>الإعدادات</span></a>
+      </nav>
+      <div class="sidebar-footer">
+        <a href="/" target="_blank" class="side-link">🔗 الموقع</a>
+        <button id="logout-btn" class="side-link danger">🚪 خروج</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="top-bar">
+        <button id="menu-toggle" class="menu-toggle" aria-label="القائمة">☰</button>
+        <h2 id="view-title">الملخص</h2>
+        <div class="top-right">
+          <span id="datetime"></span>
+        </div>
+      </header>
+      <div id="view" class="view"></div>
+    </main>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="/static/admin/admin.js"></script>
+</body>
+</html>
