@@ -90,7 +90,7 @@ tar -xvf ../pizza.tar
    GEMINI_MODEL = gemini-3.6-flash
    ADMIN_PASSWORD = كلمة-مرورك-القوية
    ADMIN_SECRET = السلسلة-العشوائية
-   HOST_PORT = 8000
+   HOST_PORT = 8182
    ```
 6. **Enable access control** (اختياري لكن موصى به)
 7. اضغط **Deploy the stack**
@@ -102,8 +102,8 @@ Portainer رح:
 - يشغّل التطبيق تلقائياً
 
 **تحقق من التشغيل:**
-- افتح `http://<ip-السيرفر>:8000` → لازم يفتح الموقع
-- `http://<ip-السيرفر>:8000/health` → لازم يرد `{"status":"ok"}`
+- افتح `http://<ip-السيرفر>:8182` → لازم يفتح الموقع
+- `http://<ip-السيرفر>:8182/health` → لازم يرد `{"status":"ok"}`
 
 ---
 
@@ -148,7 +148,7 @@ server {
 
     # Static + API
     location / {
-        proxy_pass http://127.0.0.1:8000;
+        proxy_pass http://127.0.0.1:8182;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -226,7 +226,7 @@ docker run --rm -v bbq-pizza_bbq_data:/data -v $(pwd):/backup alpine \
 **التطبيق ما بيفتح:**
 - Portainer → Containers → `bbq-pizza` → Logs
 - تأكد من متغيرات البيئة (خاصة `GEMINI_API_KEY`)
-- تأكد من أن المنفذ 8000 مش مستخدم بشي ثاني
+- تأكد من أن المنفذ المختار (`HOST_PORT`) مش مستخدم بشي ثاني — جرّب `netstat -tlnp | grep :8182`
 
 **الشات ما بيرد:**
 - تحقق من `GEMINI_API_KEY` صحيح

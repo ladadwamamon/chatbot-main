@@ -7,7 +7,7 @@ services:
     container_name: bbq-pizza
     restart: unless-stopped
     ports:
-      - "${HOST_PORT:-8000}:8000"
+      - "${HOST_PORT:-8182}:8000"
     environment:
       - APP_ENV=production
       - GEMINI_API_KEY=${GEMINI_API_KEY}
