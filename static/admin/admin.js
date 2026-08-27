@@ -282,7 +282,7 @@
         if (it.vegetarian) tags.push('نباتي 🥗');
         if (it.spicy) tags.push('حار 🌶');
         return `<tr>
-          <td>${it.image ? `<img class="thumb" src="/static/images/food/${esc(it.image)}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'thumb-placeholder',textContent:'🍕'}))">` : '<div class="thumb-placeholder">🍕</div>'}</td>
+          <td>${it.image ? `<img class="thumb" src="/img/${esc(it.image)}?w=160" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'thumb-placeholder',textContent:'🍕'}))">` : '<div class="thumb-placeholder">🍕</div>'}</td>
           <td><strong>${esc(it.name)}</strong>${it.name_en ? `<br><small style="color:#6b7280">${esc(it.name_en)}</small>` : ''}</td>
           <td>${esc(catName)}</td>
           <td>${priceLabel}</td>
@@ -356,7 +356,7 @@
           <span id="f-img-name" style="color:#6b7280; font-size:.85rem">${it.image ? esc(it.image) : 'لا شيء'}</span>
         </div>
         <div class="image-picker" id="f-images">
-          ${state.images.map(img => `<img src="/static/images/food/${esc(img)}" data-img="${esc(img)}" class="${it.image === img ? 'selected' : ''}" title="${esc(img)}">`).join('')}
+          ${state.images.map(img => `<img src="/img/${esc(img)}?w=160" loading="lazy" data-img="${esc(img)}" class="${it.image === img ? 'selected' : ''}" title="${esc(img)}">`).join('')}
         </div>
       </div>
 
@@ -422,7 +422,7 @@
         state.images.unshift(r.image);
         selectedImage = r.image;
         $('#f-img-name').textContent = r.image;
-        const html = state.images.map(img => `<img src="/static/images/food/${esc(img)}" data-img="${esc(img)}" class="${selectedImage === img ? 'selected' : ''}" title="${esc(img)}">`).join('');
+        const html = state.images.map(img => `<img src="/img/${esc(img)}?w=160" loading="lazy" data-img="${esc(img)}" class="${selectedImage === img ? 'selected' : ''}" title="${esc(img)}">`).join('');
         $('#f-images').innerHTML = html;
         toast('تم رفع الصورة');
       } catch (err) { toast(err.message); }

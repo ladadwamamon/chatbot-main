@@ -33,6 +33,7 @@ from app.db import (
     set_setting,
 )
 from app.gemini_client import ask_gemini
+from app.imgproxy import DEFAULT_WIDTH, get_or_create_variant
 from app.menu import format_menu_for_prompt, get_full_menu
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -84,6 +85,20 @@ async def _startup() -> None:
 @app.get("/health")
 async def health():
     return {"status": "ok", "time": time.time()}
+
+
+# ---------- Image proxy (resize + WebP cache) ----------
+@app.get("/img/{name}")
+async def image_proxy(name: str, w: int = DEFAULT_WIDTH):
+    result = get_or_create_variant(name, w)
+    if result is None:
+        raise HTTPException(status_code=404, detail="image not found")
+    path, media = result
+    return FileResponse(
+        path,
+        media_type=media,
+        headers={"Cache-Control": "public, max-age=31536000, immutable"},
+    )
 
 
 # ---------- Error middleware ----------

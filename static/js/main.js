@@ -175,7 +175,7 @@
       <article class="item-card ${item.available ? '' : 'unavailable'}" data-id="${item.id}">
         <div class="item-image">
           ${item.image
-            ? `<img src="/static/images/food/${item.image}" alt="${escapeHtml(item.name)}" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'placeholder',textContent:'🍕'}))">`
+            ? `<img src="/img/${item.image}?w=400" srcset="/img/${item.image}?w=400 1x, /img/${item.image}?w=640 2x" alt="${escapeHtml(item.name)}" loading="lazy" decoding="async" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'placeholder',textContent:'🍕'}))">`
             : `<div class="placeholder">🍕</div>`}
           ${tags.length ? `<div class="item-tags">${tags.join('')}</div>` : ''}
         </div>
@@ -223,7 +223,7 @@
 
     const imgEl = $('#modal-img');
     imgEl.innerHTML = item.image
-      ? `<img src="/static/images/food/${item.image}" alt="${escapeHtml(item.name)}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'placeholder',textContent:'🍕'}))">`
+      ? `<img src="/img/${item.image}?w=800" alt="${escapeHtml(item.name)}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'placeholder',textContent:'🍕'}))">`
       : `<div class="placeholder">🍕</div>`;
 
     const tags = [];
@@ -336,7 +336,7 @@
     body.innerHTML = STATE.cart.map((it, idx) => `
       <div class="cart-item">
         <div class="cart-item-img">${it.image
-          ? `<img src="/static/images/food/${it.image}" alt="${escapeHtml(it.name)}">`
+          ? `<img src="/img/${it.image}?w=160" alt="${escapeHtml(it.name)}" loading="lazy">`
           : '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:1.4rem">🍕</div>'}
         </div>
         <div class="cart-item-info">
