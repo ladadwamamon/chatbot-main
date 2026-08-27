@@ -750,7 +750,18 @@
           <div class="field check"><input type="checkbox" data-k="chatbot_enabled" data-bool ${s.chatbot_enabled === 'true' ? 'checked' : ''}><label>مُفعّل</label></div>
           <div class="field"><label>الموديل</label><input data-k="chatbot_model" value="${esc(s.chatbot_model || '')}"></div>
           <div class="field"><label>Temperature (0-1)</label><input type="number" step="0.05" min="0" max="1" data-k="chatbot_temperature" value="${esc(s.chatbot_temperature || '')}"></div>
-          <div class="field"><label>ميزانية التفكير (thinking budget)</label><input type="number" data-k="chatbot_thinking_budget" value="${esc(s.chatbot_thinking_budget || '')}"></div>
+          <div class="field"><label>مستوى التفكير (thinking)</label>
+            <select data-k="chatbot_thinking_budget">
+              ${(() => {
+                const cur = (s.chatbot_thinking_budget || 'minimal').toLowerCase();
+                const mapNum = { '0':'minimal','1':'low','32':'low','64':'low','128':'medium','256':'medium','512':'high' };
+                const selected = ['minimal','low','medium','high'].includes(cur) ? cur : (mapNum[cur] || 'minimal');
+                return ['minimal','low','medium','high'].map(lv =>
+                  `<option value="${lv}" ${selected === lv ? 'selected' : ''}>${lv}${lv === 'minimal' ? ' — أقل توكنات (موصى به لـ Lite)' : ''}</option>`
+                ).join('');
+              })()}
+            </select>
+          </div>
           <div class="field"><label>حد الإخراج</label><input type="number" data-k="chatbot_max_tokens" value="${esc(s.chatbot_max_tokens || '')}"></div>
         </div>
         <div class="field" style="margin-top:12px"><label>رسالة الترحيب</label><textarea data-k="chatbot_welcome">${esc(s.chatbot_welcome || '')}</textarea></div>

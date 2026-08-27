@@ -126,10 +126,10 @@ DEFAULT_SETTINGS = {
     "min_order": "50",
     "estimated_time": "30-45 دقيقة",
     "chatbot_enabled": "true",
-    "chatbot_model": "gemini-3.6-flash",
+    "chatbot_model": "gemini-3.5-flash-lite",
     "chatbot_temperature": "0.35",
-    "chatbot_thinking_budget": "128",
-    "chatbot_max_tokens": "2048",
+    "chatbot_thinking_budget": "minimal",
+    "chatbot_max_tokens": "800",
     "chatbot_welcome": "أهلاً! أنا مساعد بيتزا باربيكيو. اسألني عن أي صنف، السعر، أو المكونات.",
     "chatbot_system_prompt": (
         "أنت مساعد ذكي لمطعم بيتزا. رد بالعربية فقط، بشكل واضح ومختصر."
