@@ -10,14 +10,15 @@ services:
       - "${HOST_PORT:-8182}:8000"
     environment:
       - APP_ENV=production
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      # Pass-through (no ${...} in the value) so passwords with $ @ # stay intact.
+      - GEMINI_API_KEY
       - GEMINI_MODEL=${GEMINI_MODEL:-gemini-3.6-flash}
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
-      - ADMIN_SECRET=${ADMIN_SECRET}
-      - MANAGER_PASSWORD=${MANAGER_PASSWORD}
-      - MANAGER_SECRET=${MANAGER_SECRET}
-      - MANAGER_TOKEN=${MANAGER_TOKEN}
-      - PUBLIC_URL=${PUBLIC_URL}
+      - ADMIN_PASSWORD
+      - ADMIN_SECRET
+      - MANAGER_PASSWORD
+      - MANAGER_SECRET
+      - MANAGER_TOKEN
+      - PUBLIC_URL
     volumes:
       # Persistent SQLite database + WAL files
       - bbq_data:/app/data

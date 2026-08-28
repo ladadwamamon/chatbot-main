@@ -122,17 +122,23 @@
     }
   }
 
-  const isMobile = () => window.matchMedia('(max-width: 480px)').matches;
+  const overlayEl = $('#chat-overlay');
 
-  // Sync chat panel height with the actual visible viewport (handles the
-  // on-screen keyboard on iOS/Android better than 100dvh alone).
+  const isMobile = () => window.matchMedia('(max-width: 640px)').matches;
+
+  // Keep the sheet as a popup: never fill the screen. When the keyboard
+  // opens, shrink to the visible viewport and leave the site peeking above.
   function syncChatHeight() {
     if (!isMobile() || !state.open) {
-      panelEl.style.removeProperty('--chat-vh');
+      panelEl.style.removeProperty('--chat-h');
       return;
     }
-    const h = window.visualViewport?.height || window.innerHeight;
-    panelEl.style.setProperty('--chat-vh', `${h}px`);
+    const vv = window.visualViewport;
+    const visible = vv?.height || window.innerHeight;
+    const keyboardOpen = !!(vv && (window.innerHeight - vv.height > 90));
+    const gap = keyboardOpen ? 16 : Math.round(Math.min(120, visible * 0.22));
+    const h = Math.max(260, Math.round(visible - gap));
+    panelEl.style.setProperty('--chat-h', `${h}px`);
   }
 
   window.visualViewport?.addEventListener('resize', syncChatHeight);
@@ -144,12 +150,12 @@
     if (state.open) return;
     state.open = true;
     fabBtn.classList.add('hidden');
+    overlayEl?.classList.remove('hidden');
     panelEl.classList.remove('hidden');
     if (isMobile()) {
       document.body.classList.add('chat-open-mobile');
       syncChatHeight();
-      // Delay focus so the panel animation runs before the keyboard slides up.
-      setTimeout(() => inputEl.focus({ preventScroll: true }), 320);
+      // Don't auto-focus: opening the keyboard immediately is what jumps the layout.
     } else {
       setTimeout(() => inputEl.focus(), 200);
     }
@@ -157,23 +163,24 @@
   function closeChat() {
     state.open = false;
     fabBtn.classList.remove('hidden');
+    overlayEl?.classList.add('hidden');
     panelEl.classList.add('hidden');
     document.body.classList.remove('chat-open-mobile');
-    panelEl.style.removeProperty('--chat-vh');
+    panelEl.style.removeProperty('--chat-h');
     inputEl.blur();
   }
 
-  // Keep newest message visible when the keyboard opens.
   inputEl.addEventListener('focus', () => {
     if (!isMobile()) return;
     setTimeout(() => {
       syncChatHeight();
       bodyEl.scrollTop = bodyEl.scrollHeight;
-    }, 250);
+    }, 280);
   });
 
   fabBtn.addEventListener('click', openChat);
   closeBtn.addEventListener('click', closeChat);
+  overlayEl?.addEventListener('click', closeChat);
   document.addEventListener('open-chat', openChat);
 
   formEl.addEventListener('submit', (e) => {

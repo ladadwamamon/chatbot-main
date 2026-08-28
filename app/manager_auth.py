@@ -25,7 +25,7 @@ def _env(name: str) -> str | None:
     v = os.getenv(name)
     if v is None:
         return None
-    v = v.strip()
+    v = v.strip().strip('"').strip("'")
     return v or None
 
 

@@ -171,7 +171,9 @@
     <span class="chat-fab-text">اسألني</span>
   </button>
 
-  <div class="chat-panel hidden" id="chat-panel" role="dialog" aria-label="محادثة">
+  <div class="chat-overlay hidden" id="chat-overlay"></div>
+  <div class="chat-panel hidden" id="chat-panel" role="dialog" aria-label="محادثة" aria-modal="true">
+    <div class="chat-sheet-handle" aria-hidden="true"></div>
     <div class="chat-header">
       <div class="chat-header-info">
         <div class="chat-avatar">🤖</div>
@@ -185,7 +187,7 @@
     <div class="chat-body" id="chat-body"></div>
     <div class="chat-quick" id="chat-quick"></div>
     <form class="chat-input" id="chat-form">
-      <input type="text" id="chat-input" placeholder="اكتب سؤالك..." autocomplete="off" maxlength="500">
+      <input type="text" id="chat-input" placeholder="اكتب سؤالك..." autocomplete="off" inputmode="text" maxlength="500">
       <button type="submit" id="chat-send" aria-label="إرسال">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M22 2L11 13M22 2L15 22L11 13M22 2L2 9L11 13"/>
