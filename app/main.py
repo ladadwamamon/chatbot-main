@@ -34,6 +34,7 @@ from app.db import (
 )
 from app.gemini_client import ask_gemini
 from app.imgproxy import DEFAULT_WIDTH, get_or_create_variant
+from app.manager_routes import bootstrap_local_venue, router as manager_router
 from app.menu import format_menu_for_prompt, get_full_menu
 from app.tables import (
     build_scan_url,
@@ -52,7 +53,8 @@ STATIC_DIR = ROOT / "static"
 IMAGES_DIR = STATIC_DIR / "images" / "food"
 IMAGES_DIR.mkdir(parents=True, exist_ok=True)
 
-app = FastAPI(title="Barbeque Pizza")
+app = FastAPI(title="Venue Platform")
+app.include_router(manager_router)
 
 
 # ---------- Simple in-memory rate limiter ----------
@@ -91,11 +93,16 @@ async def _startup() -> None:
             seed_all(force=False)
     except Exception:
         pass
+    try:
+        bootstrap_local_venue()
+    except Exception:
+        pass
 
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "time": time.time()}
+    from app.agent import APP_VERSION
+    return {"status": "ok", "time": time.time(), "version": APP_VERSION}
 
 
 # ---------- Image proxy (resize + WebP cache) ----------
@@ -710,16 +717,28 @@ async def admin_table_qr(tid: int, request: Request, size: int = 12):
 
 
 # ---------- Admin: settings ----------
+# Restaurant-owner may edit branding/ops. Model/prompt/tokens stay on /manager.
+RESTAURANT_SETTING_KEYS = {
+    "restaurant_name", "restaurant_name_en", "restaurant_tagline",
+    "restaurant_phone", "restaurant_address", "restaurant_hours",
+    "currency", "delivery_available", "delivery_fee", "min_order", "estimated_time",
+    "orders_require_table", "chatbot_enabled", "chatbot_welcome",
+    "primary_color", "primary_color_dark",
+}
+
+
 @app.get("/admin/api/settings", dependencies=[Depends(require_admin)])
 async def admin_get_settings():
-    return all_settings()
+    s = all_settings()
+    return {k: s.get(k) for k in RESTAURANT_SETTING_KEYS}
 
 
 @app.patch("/admin/api/settings", dependencies=[Depends(require_admin)])
 async def admin_update_settings(payload: dict):
     for k, v in payload.items():
-        set_setting(k, str(v))
-    return {"ok": True, "settings": all_settings()}
+        if k in RESTAURANT_SETTING_KEYS:
+            set_setting(k, str(v))
+    return {"ok": True, "settings": {k: all_settings().get(k) for k in RESTAURANT_SETTING_KEYS}}
 
 
 # ---------- Static ----------

@@ -115,6 +115,33 @@ CREATE TABLE IF NOT EXISTS tables (
   created_at TEXT DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_tables_token ON tables(token);
+
+CREATE TABLE IF NOT EXISTS venues (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now')),
+  name TEXT NOT NULL,
+  name_en TEXT,
+  slug TEXT NOT NULL UNIQUE,
+  kind TEXT DEFAULT 'restaurant',
+  status TEXT DEFAULT 'setup',
+  plan TEXT DEFAULT 'starter',
+  is_local INTEGER DEFAULT 0,
+  public_url TEXT,
+  contact_name TEXT,
+  contact_phone TEXT,
+  notes TEXT,
+  server_host TEXT,
+  suggested_port INTEGER,
+  manager_token TEXT,
+  admin_password TEXT,
+  admin_secret TEXT,
+  last_seen_at TEXT,
+  last_latency_ms INTEGER,
+  last_health TEXT,
+  meta_json TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_venues_status ON venues(status);
 """
 
 

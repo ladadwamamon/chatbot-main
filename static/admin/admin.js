@@ -102,7 +102,6 @@
     tables: renderTables,
     orders: renderOrders,
     chats: renderChats,
-    errors: renderErrors,
     settings: renderSettings,
   };
 
@@ -112,7 +111,7 @@
 
   function activateNav(view) {
     $$('.side-nav a').forEach((a) => a.classList.toggle('active', a.dataset.view === view));
-    const titles = { dashboard: 'الملخص', menu: 'المنيو', categories: 'الفئات', tables: 'الطاولات', orders: 'الطلبات', chats: 'المحادثات', errors: 'الأخطاء', settings: 'الإعدادات' };
+    const titles = { dashboard: 'الملخص', menu: 'المنيو', categories: 'الفئات', tables: 'الطاولات', orders: 'الطلبات', chats: 'المحادثات', settings: 'الإعدادات' };
     $('#view-title').textContent = titles[view] || '';
   }
 
@@ -158,9 +157,6 @@
       const badgeOrders = $('#badge-orders');
       if (s.orders.today > 0) { badgeOrders.textContent = s.orders.today; badgeOrders.hidden = false; }
       else badgeOrders.hidden = true;
-      const badgeErrors = $('#badge-errors');
-      if (s.errors.open > 0) { badgeErrors.textContent = s.errors.open; badgeErrors.hidden = false; }
-      else badgeErrors.hidden = true;
     } catch {}
   }
 
@@ -193,12 +189,6 @@
           <div class="stat-value">${s.chats.today}</div>
           <div class="stat-sub">توكين اليوم: ${(s.chats.tokens_in_today||0) + (s.chats.tokens_out_today||0)}</div>
         </div>
-        <div class="stat-card">
-          <div class="stat-icon">🐛</div>
-          <div class="stat-label">أخطاء مفتوحة</div>
-          <div class="stat-value" style="color:${s.errors.open ? '#b91c1c' : ''}">${s.errors.open}</div>
-          <div class="stat-sub"><a href="#/errors">عرض التفاصيل</a></div>
-        </div>
       </div>
 
       <div class="card">
@@ -217,15 +207,6 @@
             </tbody>
           </table></div>
         ` : '<div class="empty-state">لا توجد طلبات بعد</div>'}
-      </div>
-
-      <div class="card">
-        <div class="card-title">آخر الأخطاء المفتوحة</div>
-        ${s.recent_errors.length ? s.recent_errors.map(e => `
-          <div class="error-item">
-            <div class="meta"><span>${fmtDate(e.created_at)}</span><span class="badge gray">${esc(e.source || 'server')}</span></div>
-            <div class="message">${esc(e.message)}</div>
-          </div>`).join('') : '<div class="empty-state">لا يوجد أخطاء 🎉</div>'}
       </div>
     `;
   }
@@ -1000,24 +981,8 @@
         <div class="card-title">🤖 الشات بوت</div>
         <div class="form-grid">
           <div class="field check"><input type="checkbox" data-k="chatbot_enabled" data-bool ${s.chatbot_enabled === 'true' ? 'checked' : ''}><label>مُفعّل</label></div>
-          <div class="field"><label>الموديل</label><input data-k="chatbot_model" value="${esc(s.chatbot_model || '')}"></div>
-          <div class="field"><label>Temperature (0-1)</label><input type="number" step="0.05" min="0" max="1" data-k="chatbot_temperature" value="${esc(s.chatbot_temperature || '')}"></div>
-          <div class="field"><label>مستوى التفكير (thinking)</label>
-            <select data-k="chatbot_thinking_budget">
-              ${(() => {
-                const cur = (s.chatbot_thinking_budget || 'minimal').toLowerCase();
-                const mapNum = { '0':'minimal','1':'low','32':'low','64':'low','128':'medium','256':'medium','512':'high' };
-                const selected = ['minimal','low','medium','high'].includes(cur) ? cur : (mapNum[cur] || 'minimal');
-                return ['minimal','low','medium','high'].map(lv =>
-                  `<option value="${lv}" ${selected === lv ? 'selected' : ''}>${lv}${lv === 'minimal' ? ' — أقل توكنات (موصى به لـ Lite)' : ''}</option>`
-                ).join('');
-              })()}
-            </select>
-          </div>
-          <div class="field"><label>حد الإخراج</label><input type="number" data-k="chatbot_max_tokens" value="${esc(s.chatbot_max_tokens || '')}"></div>
         </div>
         <div class="field" style="margin-top:12px"><label>رسالة الترحيب</label><textarea data-k="chatbot_welcome">${esc(s.chatbot_welcome || '')}</textarea></div>
-        <div class="field" style="margin-top:12px"><label>تعليمات النظام (System Prompt)</label><textarea data-k="chatbot_system_prompt" style="min-height:180px;font-family:monospace;font-size:.85rem">${esc(s.chatbot_system_prompt || '')}</textarea></div>
       </div>
 
       <div class="card">

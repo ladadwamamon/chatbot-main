@@ -14,6 +14,10 @@ services:
       - GEMINI_MODEL=${GEMINI_MODEL:-gemini-3.6-flash}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}
       - ADMIN_SECRET=${ADMIN_SECRET}
+      - MANAGER_PASSWORD=${MANAGER_PASSWORD}
+      - MANAGER_SECRET=${MANAGER_SECRET}
+      - MANAGER_TOKEN=${MANAGER_TOKEN}
+      - PUBLIC_URL=${PUBLIC_URL}
     volumes:
       # Persistent SQLite database + WAL files
       - bbq_data:/app/data
