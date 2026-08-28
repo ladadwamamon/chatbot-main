@@ -144,17 +144,19 @@
       <button class="modal-close" id="checkout-close" aria-label="إغلاق">✕</button>
       <div class="modal-body">
         <h3>معلومات الطلب</h3>
-        <div class="table-notice" id="table-notice-checkout">
+        <div class="table-notice hidden" id="table-notice-checkout">
           <span class="tb-icon">🪑</span>
           <span>الطلب لطاولة <strong id="checkout-table-number">—</strong></span>
         </div>
         <form id="order-form" class="form">
           <label>الاسم <input type="text" name="customer_name" required placeholder="مثلاً: أحمد"></label>
-          <label>رقم الطاولة
-            <input type="text" name="table_number" id="checkout-table-input" readonly required>
+
+          <label class="field-table hidden" id="field-table">رقم الطاولة
+            <input type="text" name="table_number" id="checkout-table-input" readonly>
             <small class="hint">يُملأ تلقائياً بعد مسح رمز QR الموجود على الطاولة</small>
           </label>
-          <label>ملاحظات <textarea name="notes" rows="2" placeholder="مثلاً: بدون بصل"></textarea></label>
+
+          <label>ملاحظات عامة (اختياري) <textarea name="notes" rows="2" placeholder="ملاحظة على الفاتورة كلها"></textarea></label>
           <div class="order-summary" id="order-summary"></div>
           <button type="submit" class="btn primary big block" id="submit-order-btn">تأكيد الطلب</button>
         </form>

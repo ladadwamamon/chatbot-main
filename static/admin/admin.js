@@ -567,8 +567,32 @@
 
   // ---------- Tables (QR-based dine-in) ----------
   async function renderTables() {
+    // Always refresh settings so the toggle reflects the current server state
+    state.settings = await api('/admin/api/settings');
+    const requireTable = (state.settings.orders_require_table || 'true') === 'true';
     const tables = await api('/admin/api/tables');
     $('#view').innerHTML = `
+      <div class="card mode-card">
+        <div class="mode-head">
+          <div>
+            <div class="card-title" style="margin-bottom:2px">🪑 وضع الطاولات (QR)</div>
+            <div class="mode-hint">
+              ${requireTable
+                ? 'الطلبات تحتاج مسح QR الطاولة. مناسب لتناول الطعام داخل المطعم.'
+                : 'الطلبات مفتوحة للجميع مع رقم هاتف. مناسب للتوصيل أو الاستلام.'}
+            </div>
+          </div>
+          <label class="switch" title="تفعيل / إيقاف">
+            <input type="checkbox" id="mode-toggle" ${requireTable ? 'checked' : ''}>
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="mode-flags">
+          <span class="badge ${requireTable ? 'info' : 'gray'}">🪑 طاولة QR</span>
+          <span class="badge ${requireTable ? 'gray' : 'success'}">📞 وضع عام</span>
+        </div>
+      </div>
+
       <div class="toolbar">
         <button class="btn primary" id="add-table">+ إضافة طاولة</button>
         <div style="flex:1"></div>
@@ -579,6 +603,22 @@
       </div>
       ${tables.length ? '' : '<div class="empty-state">لا توجد طاولات بعد. اضغط "إضافة طاولة" لتبدأ.</div>'}
     `;
+
+    $('#mode-toggle').addEventListener('change', async (e) => {
+      const val = e.target.checked ? 'true' : 'false';
+      try {
+        await api('/admin/api/settings', {
+          method: 'PATCH',
+          body: { orders_require_table: val },
+        });
+        toast(e.target.checked ? '✓ وضع الطاولات مفعّل' : '✓ الوضع العام مفعّل');
+        renderTables();
+      } catch (err) {
+        e.target.checked = !e.target.checked;
+        toast(err.message);
+      }
+    });
+
     $('#add-table').addEventListener('click', () => openTableEditor(null));
     if (tables.length) {
       $('#print-all-qr').addEventListener('click', () => printAllQr(tables));
@@ -806,9 +846,12 @@
 
   function showOrder(o) {
     const itemsHtml = (o.items || []).map(it => `
-      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
-        <div>${esc(it.name)} ${it.size ? `<small>(${esc(it.size)})</small>` : ''} × ${it.quantity}</div>
-        <div>${money(it.line_total)}</div>
+      <div style="padding:6px 0;border-bottom:1px solid var(--border)">
+        <div style="display:flex;justify-content:space-between;gap:10px">
+          <div>${esc(it.name)} ${it.size ? `<small>(${esc(it.size)})</small>` : ''} × ${it.quantity}</div>
+          <div>${money(it.line_total)}</div>
+        </div>
+        ${it.note ? `<div class="item-note">🗒️ ${esc(it.note)}</div>` : ''}
       </div>
     `).join('');
     openModal(`

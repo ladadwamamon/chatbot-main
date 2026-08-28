@@ -162,11 +162,12 @@ class OrderItem(BaseModel):
     quantity: int = Field(..., ge=1, le=50)
     unit_price: float
     line_total: float
+    note: Optional[str] = Field(None, max_length=200)
 
 
 class OrderRequest(BaseModel):
     customer_name: str = Field(..., min_length=1, max_length=100)
-    table_token: str = Field(..., min_length=4, max_length=64)
+    table_token: Optional[str] = Field(None, max_length=64)
     notes: Optional[str] = Field(None, max_length=500)
     items: list[OrderItem] = Field(..., min_length=1)
     payment_method: str = "نقدي عند الاستلام"
@@ -252,6 +253,9 @@ async def api_restaurant():
             "enabled": s.get("chatbot_enabled") == "true",
             "welcome": s.get("chatbot_welcome"),
         },
+        "orders": {
+            "require_table": s.get("orders_require_table", "true") == "true",
+        },
         "theme": {
             "primary": s.get("primary_color"),
             "primary_dark": s.get("primary_color_dark"),
@@ -271,8 +275,10 @@ async def api_chat(request: ChatRequest, http_req: Request):
     if all_settings().get("chatbot_enabled", "true") != "true":
         raise HTTPException(status_code=503, detail="الشات بوت معطل حالياً")
 
-    ip = client_ip(http_req)
-    if not rate_limit(f"chat:{ip}", max_hits=20, window_sec=60):
+    # Rate-limit per session first (isolates each customer on shared WiFi);
+    # fall back to IP only when the client has no session yet.
+    rl_key = request.session_id or client_ip(http_req)
+    if not rate_limit(f"chat:{rl_key}", max_hits=20, window_sec=60):
         raise HTTPException(status_code=429, detail="طلبات كثيرة، انتظر قليلاً")
 
     session_id = request.session_id or str(uuid.uuid4())
@@ -304,16 +310,29 @@ async def api_get_table(token: str):
 
 @app.post("/api/orders")
 async def api_create_order(order: OrderRequest, http_req: Request):
-    ip = client_ip(http_req)
-    if not rate_limit(f"order:{ip}", max_hits=5, window_sec=300):
-        raise HTTPException(status_code=429, detail="طلبات كثيرة، انتظر قليلاً")
+    settings = all_settings()
+    require_table = settings.get("orders_require_table", "true") == "true"
 
-    table = get_table_by_token(order.table_token)
-    if not table or not table["active"]:
+    table = None
+    if order.table_token:
+        candidate = get_table_by_token(order.table_token)
+        if candidate and candidate["active"]:
+            table = candidate
+
+    if require_table and table is None:
         raise HTTPException(
             status_code=400,
             detail="رقم الطاولة غير صحيح، الرجاء مسح رمز QR الموجود على طاولتك",
         )
+
+    # Rate-limit per identity so one customer on shared WiFi can't block others.
+    # In public mode without a table, we fall back to IP (best available).
+    identity = (
+        (table and f"table:{table['id']}")
+        or f"ip:{client_ip(http_req)}"
+    )
+    if not rate_limit(f"order:{identity}", max_hits=6, window_sec=120):
+        raise HTTPException(status_code=429, detail="طلبات كثيرة، انتظر قليلاً")
 
     try:
         subtotal = sum(i.line_total for i in order.items)
@@ -336,8 +355,8 @@ async def api_create_order(order: OrderRequest, http_req: Request):
                 total,
                 "جديد",
                 order.payment_method,
-                table["id"],
-                table["number"],
+                table["id"] if table else None,
+                table["number"] if table else None,
             ),
         )
         conn.commit()
@@ -345,7 +364,8 @@ async def api_create_order(order: OrderRequest, http_req: Request):
             "id": cur.lastrowid,
             "total": total,
             "subtotal": subtotal,
-            "table_number": table["number"],
+            "table_number": table["number"] if table else None,
+            "mode": "table" if require_table else "public",
         }
     except Exception as e:
         log_error(

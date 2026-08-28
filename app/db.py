@@ -150,6 +150,7 @@ DEFAULT_SETTINGS = {
     "delivery_fee": "10",
     "min_order": "50",
     "estimated_time": "30-45 دقيقة",
+    "orders_require_table": "true",
     "chatbot_enabled": "true",
     "chatbot_model": "gemini-3.5-flash-lite",
     "chatbot_temperature": "0.35",

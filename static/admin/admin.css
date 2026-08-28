@@ -263,6 +263,21 @@ input, textarea, select { color: var(--text); }
 .image-picker img:hover { transform: scale(1.03); }
 .image-picker img.selected { border-color: var(--primary); }
 
+/* Per-item order notes */
+.item-note {
+  margin-top: 4px; display: inline-block; padding: 3px 10px;
+  background: #fef3c7; color: #92400e; border-radius: 8px;
+  font-size: .82rem; font-weight: 500;
+}
+
+/* Mode toggle card */
+.mode-card { border-right: 4px solid var(--info); }
+.mode-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+}
+.mode-hint { color: var(--muted); font-size: .88rem; }
+.mode-flags { display: flex; gap: 6px; margin-top: 10px; }
+
 /* Tables grid (dine-in QR) */
 .tables-grid {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));

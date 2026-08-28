@@ -89,6 +89,9 @@
     }
   }
 
+  const requireTable = () =>
+    STATE.restaurant?.orders?.require_table !== false;
+
   // ---------- Load data ----------
   async function load() {
     try {
@@ -379,19 +382,33 @@
       return;
     }
     $('#checkout-btn').disabled = false;
-    body.innerHTML = STATE.cart.map((it, idx) => `
-      <div class="cart-item">
-        <div class="cart-item-img">${it.image
-          ? `<img src="/img/${it.image}?w=160" alt="${escapeHtml(it.name)}" loading="lazy">`
-          : '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:1.4rem">🍕</div>'}
+    body.innerHTML = STATE.cart.map((it, idx) => {
+      const hasNote = !!(it.note && it.note.trim());
+      const noteOpen = !!it._noteOpen || hasNote;
+      return `
+      <div class="cart-item-wrap ${noteOpen ? 'note-open' : ''}" data-idx="${idx}">
+        <div class="cart-item">
+          <div class="cart-item-img">${it.image
+            ? `<img src="/img/${it.image}?w=160" alt="${escapeHtml(it.name)}" loading="lazy">`
+            : '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:1.4rem">🍕</div>'}
+          </div>
+          <div class="cart-item-info">
+            <div class="cart-item-name">${escapeHtml(it.name)}</div>
+            <div class="cart-item-meta">${it.size ? `الحجم ${it.size} · ` : ''}الكمية ${it.quantity} × ${money(it.unit_price)}</div>
+            ${hasNote ? `<div class="cart-item-note-badge">🗒️ ${escapeHtml(it.note)}</div>` : ''}
+          </div>
+          <div class="cart-item-total">${money(it.line_total)}</div>
+          <div class="cart-item-actions">
+            <button class="cart-item-note-toggle ${hasNote ? 'active' : ''}" data-note-toggle="${idx}" title="ملاحظة على هذا الصنف" aria-label="ملاحظة">🗒️</button>
+            <button class="cart-item-remove" data-idx="${idx}" aria-label="حذف">🗑</button>
+          </div>
         </div>
-        <div class="cart-item-info">
-          <div class="cart-item-name">${escapeHtml(it.name)}</div>
-          <div class="cart-item-meta">${it.size ? `الحجم ${it.size} · ` : ''}الكمية ${it.quantity} × ${money(it.unit_price)}</div>
+        <div class="cart-item-note-box ${noteOpen ? '' : 'hidden'}">
+          <textarea data-note-input="${idx}" rows="2" maxlength="200"
+            placeholder="ملاحظة على ${escapeHtml(it.name)} (مثلاً: بدون بصل، حار زيادة)">${escapeHtml(it.note || '')}</textarea>
         </div>
-        <div class="cart-item-total">${money(it.line_total)}</div>
-        <button class="cart-item-remove" data-idx="${idx}" aria-label="حذف">🗑</button>
-      </div>`).join('');
+      </div>`;
+    }).join('');
     body.querySelectorAll('.cart-item-remove').forEach((b) => {
       b.addEventListener('click', () => {
         STATE.cart.splice(Number(b.dataset.idx), 1);
@@ -400,30 +417,69 @@
         renderCart();
       });
     });
+    body.querySelectorAll('[data-note-toggle]').forEach((b) => {
+      b.addEventListener('click', () => {
+        const i = Number(b.dataset.noteToggle);
+        STATE.cart[i]._noteOpen = !STATE.cart[i]._noteOpen && !(STATE.cart[i].note || '').trim();
+        // If we're opening (no existing note): flip to open. If already showing (note exists), toggle closed.
+        const wrap = b.closest('.cart-item-wrap');
+        const box = wrap?.querySelector('.cart-item-note-box');
+        if (!box) return;
+        const wasHidden = box.classList.contains('hidden');
+        box.classList.toggle('hidden');
+        if (wasHidden) {
+          const ta = box.querySelector('textarea');
+          ta?.focus();
+        }
+      });
+    });
+    body.querySelectorAll('[data-note-input]').forEach((ta) => {
+      ta.addEventListener('input', (e) => {
+        const i = Number(e.target.dataset.noteInput);
+        STATE.cart[i].note = e.target.value.trim() || null;
+        saveCart();
+      });
+      ta.addEventListener('blur', renderCart);
+    });
     const subtotal = STATE.cart.reduce((s, i) => s + i.line_total, 0);
     const total = subtotal;
-    const tableNote = STATE.table
-      ? `<div class="row" style="color:#2563eb"><span>🪑 الطاولة</span><span>#${escapeHtml(STATE.table.number)}</span></div>`
-      : `<div class="row" style="color:#b91c1c">⚠️ امسح رمز QR الموجود على طاولتك لتفعيل الطلب</div>`;
+    let note = '';
+    if (STATE.table) {
+      note = `<div class="row" style="color:#2563eb"><span>🪑 الطاولة</span><span>#${escapeHtml(STATE.table.number)}</span></div>`;
+    } else if (requireTable()) {
+      note = `<div class="row" style="color:#b91c1c">⚠️ امسح رمز QR الموجود على طاولتك لتفعيل الطلب</div>`;
+    }
     $('#cart-totals').innerHTML = `
-      ${tableNote}
+      ${note}
       <div class="row total"><span>المجموع الكلي</span><span>${money(total)}</span></div>
     `;
     const checkoutBtn = $('#checkout-btn');
-    if (checkoutBtn) checkoutBtn.disabled = !STATE.cart.length || !STATE.table;
+    if (checkoutBtn) {
+      const blocked = requireTable() && !STATE.table;
+      checkoutBtn.disabled = !STATE.cart.length || blocked;
+    }
   }
 
   // ---------- Checkout ----------
+  function applyCheckoutMode() {
+    const usingTable = !!STATE.table;
+    $('#field-table').classList.toggle('hidden', !usingTable);
+    $('#table-notice-checkout').classList.toggle('hidden', !usingTable);
+    if (usingTable) {
+      $('#checkout-table-number').textContent = `#${STATE.table.number}`;
+      $('#checkout-table-input').value = STATE.table.number;
+    }
+  }
+
   $('#checkout-btn').addEventListener('click', () => {
     if (!STATE.cart.length) return;
-    if (!STATE.table) {
+    if (requireTable() && !STATE.table) {
       showToast('امسح رمز QR الموجود على الطاولة لتفعيل الطلب');
       return;
     }
     closeCart();
     renderOrderSummary();
-    $('#checkout-table-number').textContent = `#${STATE.table.number}`;
-    $('#checkout-table-input').value = STATE.table.number;
+    applyCheckoutMode();
     $('#order-success').classList.add('hidden');
     $('#order-form').classList.remove('hidden');
     $('#checkout-modal').classList.remove('hidden');
@@ -451,16 +507,25 @@
 
   $('#order-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    if (!STATE.table) {
+    const form = e.target;
+    const needTable = requireTable();
+    if (needTable && !STATE.table) {
       showToast('امسح رمز QR الموجود على الطاولة أولاً');
       return;
     }
-    const form = e.target;
     const payload = {
       customer_name: form.customer_name.value.trim(),
-      table_token: STATE.table.token,
+      table_token: STATE.table ? STATE.table.token : null,
       notes: form.notes.value.trim() || null,
-      items: STATE.cart,
+      items: STATE.cart.map((it) => ({
+        item_id: it.item_id,
+        name: it.name,
+        size: it.size,
+        quantity: it.quantity,
+        unit_price: it.unit_price,
+        line_total: it.line_total,
+        note: it.note || null,
+      })),
     };
     const btn = form.querySelector('button[type="submit"]');
     btn.disabled = true;
@@ -480,13 +545,19 @@
       saveCart();
       updateCartCount();
       form.classList.add('hidden');
+      const tblLine = data.table_number
+        ? `<div>الطاولة: <strong>#${escapeHtml(data.table_number)}</strong></div>`
+        : '';
+      const doneNote = data.table_number
+        ? 'النادل رح يجيك بأسرع وقت 🍕'
+        : 'طلبك وصلنا، احتفظ برقم الطلب لاستلامه من الكاشير.';
       $('#order-success').innerHTML = `
         <div style="font-size:2rem;margin-bottom:8px">✅</div>
         <div style="font-weight:800;font-size:1.1rem;margin-bottom:4px">تم استلام طلبك بنجاح</div>
         <div>رقم الطلب: <strong>#${data.id}</strong></div>
-        <div>الطاولة: <strong>#${escapeHtml(data.table_number || STATE.table.number)}</strong></div>
+        ${tblLine}
         <div>المجموع: <strong>${money(data.total)}</strong></div>
-        <div style="color:#065f46;margin-top:10px;font-size:.9rem">النادل رح يجيك بأسرع وقت 🍕</div>
+        <div style="color:#065f46;margin-top:10px;font-size:.9rem">${doneNote}</div>
       `;
       $('#order-success').classList.remove('hidden');
     } catch (err) {
