@@ -122,18 +122,55 @@
     }
   }
 
+  const isMobile = () => window.matchMedia('(max-width: 480px)').matches;
+
+  // Sync chat panel height with the actual visible viewport (handles the
+  // on-screen keyboard on iOS/Android better than 100dvh alone).
+  function syncChatHeight() {
+    if (!isMobile() || !state.open) {
+      panelEl.style.removeProperty('--chat-vh');
+      return;
+    }
+    const h = window.visualViewport?.height || window.innerHeight;
+    panelEl.style.setProperty('--chat-vh', `${h}px`);
+  }
+
+  window.visualViewport?.addEventListener('resize', syncChatHeight);
+  window.visualViewport?.addEventListener('scroll', syncChatHeight);
+  window.addEventListener('resize', syncChatHeight);
+  window.addEventListener('orientationchange', () => setTimeout(syncChatHeight, 200));
+
   function openChat() {
     if (state.open) return;
     state.open = true;
     fabBtn.classList.add('hidden');
     panelEl.classList.remove('hidden');
-    setTimeout(() => inputEl.focus(), 200);
+    if (isMobile()) {
+      document.body.classList.add('chat-open-mobile');
+      syncChatHeight();
+      // Delay focus so the panel animation runs before the keyboard slides up.
+      setTimeout(() => inputEl.focus({ preventScroll: true }), 320);
+    } else {
+      setTimeout(() => inputEl.focus(), 200);
+    }
   }
   function closeChat() {
     state.open = false;
     fabBtn.classList.remove('hidden');
     panelEl.classList.add('hidden');
+    document.body.classList.remove('chat-open-mobile');
+    panelEl.style.removeProperty('--chat-vh');
+    inputEl.blur();
   }
+
+  // Keep newest message visible when the keyboard opens.
+  inputEl.addEventListener('focus', () => {
+    if (!isMobile()) return;
+    setTimeout(() => {
+      syncChatHeight();
+      bodyEl.scrollTop = bodyEl.scrollHeight;
+    }, 250);
+  });
 
   fabBtn.addEventListener('click', openChat);
   closeBtn.addEventListener('click', closeChat);

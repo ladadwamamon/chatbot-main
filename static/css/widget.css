@@ -3,8 +3,8 @@
    =========================== */
 .chat-fab {
   position: fixed;
-  bottom: 24px;
-  left: 24px;
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  left: max(24px, env(safe-area-inset-left, 0px));
   z-index: 45;
   display: flex; align-items: center; gap: 10px;
   padding: 12px 18px;
@@ -19,6 +19,7 @@
   font-size: .95rem;
   transition: transform .18s, box-shadow .18s;
   animation: fab-bounce 2.6s ease-in-out infinite;
+  -webkit-tap-highlight-color: transparent;
 }
 .chat-fab:hover { transform: scale(1.05); box-shadow: 0 14px 30px rgba(230,57,70,0.4); }
 .chat-fab.hidden { display: none !important; }
@@ -47,6 +48,9 @@
   border: 1px solid rgba(0,0,0,0.06);
 }
 .chat-panel.hidden { display: none !important; }
+
+/* Prevent background scroll while chat is open on mobile */
+body.chat-open-mobile { overflow: hidden; touch-action: none; }
 
 @keyframes chat-open {
   from { opacity: 0; transform: translateY(20px) scale(0.96); }
@@ -86,6 +90,8 @@
   padding: 16px;
   display: flex; flex-direction: column; gap: 10px;
   background: linear-gradient(180deg, #fafafa 0%, #fff 100%);
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .msg { display: flex; gap: 8px; align-items: flex-end; animation: msg-in .22s ease; }
@@ -175,9 +181,11 @@
   align-items: center;
 }
 .chat-input input {
-  flex: 1; padding: 10px 14px;
+  flex: 1; min-width: 0; padding: 10px 14px;
   border: 1.5px solid var(--border);
-  border-radius: 999px; font-family: inherit; font-size: .93rem;
+  border-radius: 999px; font-family: inherit;
+  /* 16px prevents iOS Safari zoom-in on focus (which causes the visible layout jump). */
+  font-size: 16px;
   background: #fafafa; outline: none;
   transition: all .18s;
 }
@@ -196,19 +204,51 @@
 /* Responsive */
 @media (max-width: 480px) {
   .chat-fab {
-    bottom: 16px; left: 16px;
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    left: max(16px, env(safe-area-inset-left, 0px));
     padding: 12px 16px;
   }
   .chat-fab-text { display: none; }
   .chat-fab-icon { font-size: 1.4rem; }
+
+  /* Full-screen chat on mobile. Use dynamic viewport units so it shrinks
+     correctly when the on-screen keyboard opens, and JS updates --chat-vh
+     via the visualViewport API for older iOS/Safari. */
   .chat-panel {
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    max-width: 100%;
-    height: 100%;
-    max-height: 100%;
-    border-radius: 0;
-    border: 0;
+    top: 0; bottom: 0; left: 0; right: 0;
+    width: 100%; max-width: 100%;
+    height: 100dvh; max-height: 100dvh;
+    /* JS-set fallback for browsers where 100dvh doesn't respond to the keyboard (some iOS versions). */
+    height: var(--chat-vh, 100dvh);
+    max-height: var(--chat-vh, 100dvh);
+    border-radius: 0; border: 0;
+    animation: chat-open-m .22s ease;
   }
+  @keyframes chat-open-m {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .chat-header { padding: 12px 14px; padding-top: max(12px, env(safe-area-inset-top, 0px)); }
+  .chat-avatar { width: 36px; height: 36px; font-size: 1.15rem; }
+  .chat-title { font-size: .95rem; }
+  .chat-status { font-size: .72rem; }
+  .chat-close { width: 34px; height: 34px; }
+
+  .chat-body { padding: 12px; gap: 8px; }
+  .msg-bubble { max-width: 82%; font-size: .95rem; }
+
+  .chat-quick { padding: 6px 10px; gap: 5px; }
+  .chat-quick button { padding: 5px 10px; font-size: .78rem; }
+
+  .chat-input {
+    padding: 10px 12px;
+    padding-bottom: max(10px, env(safe-area-inset-bottom, 0px));
+  }
+  .chat-input button { width: 42px; height: 42px; }
+}
+
+@media (max-width: 360px) {
+  .msg-avatar { width: 24px; height: 24px; font-size: .9rem; }
+  .msg-bubble { max-width: 85%; font-size: .9rem; padding: 8px 12px; }
 }
