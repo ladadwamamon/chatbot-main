@@ -21,15 +21,21 @@ def _secret() -> str:
 _serializer = URLSafeSerializer(_secret(), salt="manager-session")
 
 
+def _env(name: str) -> str | None:
+    v = os.getenv(name)
+    if v is None:
+        return None
+    v = v.strip()
+    return v or None
+
+
 def manager_enabled() -> bool:
-    """In production the hub is opt-in via MANAGER_PASSWORD. Dev always on."""
-    if os.getenv("MANAGER_PASSWORD"):
-        return True
-    return os.getenv("APP_ENV", "development").lower() != "production"
+    """Login page is always available. Auth uses MANAGER_PASSWORD or ADMIN_PASSWORD."""
+    return True
 
 
 def get_manager_password() -> str:
-    return os.getenv("MANAGER_PASSWORD") or "manager123"
+    return _env("MANAGER_PASSWORD") or _env("ADMIN_PASSWORD") or "manager123"
 
 
 def sign_session() -> str:
