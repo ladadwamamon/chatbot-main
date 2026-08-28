@@ -1,0 +1,15 @@
+level     chars   ~tok   save items
+current    4416   2007      ù
+soft       3829   1740    13%
+medium     2001    909    55%
+hard       1876    852    58%
+
+--- sample MEDIUM (first 25 lines) ---
+Traceback (most recent call last):
+  File "C:\Users\mamon\Desktop\chatbot main\data\_cmp_menu.py", line 85, in <module>
+    print("\n".join(build("B").splitlines()[:25]))
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mamon\AppData\Local\Programs\Python\Python313\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode characters in position 0-3: character maps to <undefined>

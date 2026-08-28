@@ -12,7 +12,11 @@
     modalItem: null,
     modalSize: null,
     modalQty: 1,
+    table: null,
   };
+
+  window.BBQ = window.BBQ || {};
+  window.BBQ.getTable = () => STATE.table;
 
   // ---------- Utils ----------
   const $ = (sel) => document.querySelector(sel);
@@ -43,9 +47,55 @@
     return item.price ?? 0;
   };
 
+  // ---------- Table detection (QR scan) ----------
+  function tokenFromUrl() {
+    const m = location.pathname.match(/^\/t\/([A-Za-z0-9_\-]{4,64})\/?$/);
+    return m ? m[1] : null;
+  }
+
+  async function detectTable() {
+    const urlToken = tokenFromUrl();
+    const savedRaw = sessionStorage.getItem('bbq_table');
+    const saved = savedRaw ? JSON.parse(savedRaw) : null;
+    const token = urlToken || saved?.token;
+    if (!token) return null;
+    try {
+      const res = await fetch(`/api/table/${encodeURIComponent(token)}`);
+      if (!res.ok) throw new Error('invalid');
+      const data = await res.json();
+      const tbl = { token: data.token, number: data.number, label: data.label || null };
+      sessionStorage.setItem('bbq_table', JSON.stringify(tbl));
+      if (urlToken) {
+        // Clean URL so refresh doesn't retrigger — token kept in sessionStorage
+        history.replaceState({}, '', '/');
+      }
+      return tbl;
+    } catch {
+      sessionStorage.removeItem('bbq_table');
+      if (urlToken) history.replaceState({}, '', '/');
+      showToast('رمز الطاولة غير صالح');
+      return null;
+    }
+  }
+
+  function applyTableBadge() {
+    const el = $('#table-badge');
+    if (!el) return;
+    if (STATE.table) {
+      el.classList.remove('hidden');
+      $('#table-badge-number').textContent = `#${STATE.table.number}`;
+    } else {
+      el.classList.add('hidden');
+    }
+  }
+
   // ---------- Load data ----------
   async function load() {
     try {
+      STATE.table = await detectTable();
+      applyTableBadge();
+      document.dispatchEvent(new CustomEvent('bbq-table-ready', { detail: STATE.table }));
+
       const [menuRes, restRes] = await Promise.all([
         fetch('/api/menu'),
         fetch('/api/restaurant'),
@@ -78,13 +128,9 @@
       document.documentElement.style.setProperty('--primary-dark', r.theme.primary_dark);
     }
 
-    // Hero badges
+    // Hero badges (dine-in mode: table + phone only)
     const badges = [];
-    if (r.delivery?.available) {
-      badges.push(`🚗 توصيل ${r.delivery.estimated_time || 'سريع'}`);
-      if (r.delivery.fee != null) badges.push(`💰 رسوم توصيل ${money(r.delivery.fee)}`);
-      if (r.delivery.min_order != null) badges.push(`🧾 حد أدنى ${money(r.delivery.min_order)}`);
-    }
+    if (STATE.table) badges.push(`🪑 طاولة #${STATE.table.number}`);
     if (r.phone) badges.push(`📞 ${r.phone}`);
     $('#hero-badges').innerHTML = badges.map((b) => `<span class="badge">${escapeHtml(b)}</span>`).join('');
 
@@ -355,20 +401,29 @@
       });
     });
     const subtotal = STATE.cart.reduce((s, i) => s + i.line_total, 0);
-    const fee = STATE.restaurant?.delivery?.available ? (STATE.restaurant.delivery.fee || 0) : 0;
-    const total = subtotal + fee;
+    const total = subtotal;
+    const tableNote = STATE.table
+      ? `<div class="row" style="color:#2563eb"><span>🪑 الطاولة</span><span>#${escapeHtml(STATE.table.number)}</span></div>`
+      : `<div class="row" style="color:#b91c1c">⚠️ امسح رمز QR الموجود على طاولتك لتفعيل الطلب</div>`;
     $('#cart-totals').innerHTML = `
-      <div class="row"><span>المجموع الفرعي</span><span>${money(subtotal)}</span></div>
-      ${fee ? `<div class="row"><span>رسوم التوصيل</span><span>${money(fee)}</span></div>` : ''}
+      ${tableNote}
       <div class="row total"><span>المجموع الكلي</span><span>${money(total)}</span></div>
     `;
+    const checkoutBtn = $('#checkout-btn');
+    if (checkoutBtn) checkoutBtn.disabled = !STATE.cart.length || !STATE.table;
   }
 
   // ---------- Checkout ----------
   $('#checkout-btn').addEventListener('click', () => {
     if (!STATE.cart.length) return;
+    if (!STATE.table) {
+      showToast('امسح رمز QR الموجود على الطاولة لتفعيل الطلب');
+      return;
+    }
     closeCart();
     renderOrderSummary();
+    $('#checkout-table-number').textContent = `#${STATE.table.number}`;
+    $('#checkout-table-input').value = STATE.table.number;
     $('#order-success').classList.add('hidden');
     $('#order-form').classList.remove('hidden');
     $('#checkout-modal').classList.remove('hidden');
@@ -387,25 +442,24 @@
 
   function renderOrderSummary() {
     const subtotal = STATE.cart.reduce((s, i) => s + i.line_total, 0);
-    const fee = STATE.restaurant?.delivery?.available ? (STATE.restaurant.delivery.fee || 0) : 0;
-    const total = subtotal + fee;
+    const total = subtotal;
     $('#order-summary').innerHTML = `
       <div class="row"><span>${STATE.cart.length} صنف</span><span>${money(subtotal)}</span></div>
-      ${fee ? `<div class="row"><span>رسوم التوصيل</span><span>${money(fee)}</span></div>` : ''}
       <div class="row total"><span>المجموع الكلي</span><span>${money(total)}</span></div>
     `;
   }
 
   $('#order-form').addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (!STATE.table) {
+      showToast('امسح رمز QR الموجود على الطاولة أولاً');
+      return;
+    }
     const form = e.target;
-    const fee = STATE.restaurant?.delivery?.available ? (STATE.restaurant.delivery.fee || 0) : 0;
     const payload = {
       customer_name: form.customer_name.value.trim(),
-      phone: form.phone.value.trim(),
-      address: form.address.value.trim() || null,
+      table_token: STATE.table.token,
       notes: form.notes.value.trim() || null,
-      delivery_fee: fee,
       items: STATE.cart,
     };
     const btn = form.querySelector('button[type="submit"]');
@@ -430,8 +484,9 @@
         <div style="font-size:2rem;margin-bottom:8px">✅</div>
         <div style="font-weight:800;font-size:1.1rem;margin-bottom:4px">تم استلام طلبك بنجاح</div>
         <div>رقم الطلب: <strong>#${data.id}</strong></div>
+        <div>الطاولة: <strong>#${escapeHtml(data.table_number || STATE.table.number)}</strong></div>
         <div>المجموع: <strong>${money(data.total)}</strong></div>
-        <div style="color:#065f46;margin-top:10px;font-size:.9rem">سنتواصل معك خلال دقائق لتأكيد الطلب.</div>
+        <div style="color:#065f46;margin-top:10px;font-size:.9rem">النادل رح يجيك بأسرع وقت 🍕</div>
       `;
       $('#order-success').classList.remove('hidden');
     } catch (err) {

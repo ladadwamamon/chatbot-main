@@ -24,6 +24,10 @@
       <nav class="header-actions">
         <a href="#menu" class="header-link">المنيو</a>
         <a href="#contact" class="header-link">تواصل</a>
+        <div class="table-badge hidden" id="table-badge" title="رقم الطاولة الحالية">
+          <span class="tb-icon">🪑</span>
+          <span class="tb-text">طاولة <strong id="table-badge-number">—</strong></span>
+        </div>
         <button class="cart-btn" id="open-cart" aria-label="السلة">
           <span class="cart-icon">🛒</span>
           <span class="cart-count" id="cart-count">0</span>
@@ -140,13 +144,19 @@
       <button class="modal-close" id="checkout-close" aria-label="إغلاق">✕</button>
       <div class="modal-body">
         <h3>معلومات الطلب</h3>
+        <div class="table-notice" id="table-notice-checkout">
+          <span class="tb-icon">🪑</span>
+          <span>الطلب لطاولة <strong id="checkout-table-number">—</strong></span>
+        </div>
         <form id="order-form" class="form">
-          <label>الاسم <input type="text" name="customer_name" required></label>
-          <label>رقم الهاتف <input type="tel" name="phone" required></label>
-          <label>العنوان <input type="text" name="address" placeholder="اختياري إذا كان استلام"></label>
+          <label>الاسم <input type="text" name="customer_name" required placeholder="مثلاً: أحمد"></label>
+          <label>رقم الطاولة
+            <input type="text" name="table_number" id="checkout-table-input" readonly required>
+            <small class="hint">يُملأ تلقائياً بعد مسح رمز QR الموجود على الطاولة</small>
+          </label>
           <label>ملاحظات <textarea name="notes" rows="2" placeholder="مثلاً: بدون بصل"></textarea></label>
           <div class="order-summary" id="order-summary"></div>
-          <button type="submit" class="btn primary big block">تأكيد الطلب</button>
+          <button type="submit" class="btn primary big block" id="submit-order-btn">تأكيد الطلب</button>
         </form>
         <div id="order-success" class="success hidden"></div>
       </div>

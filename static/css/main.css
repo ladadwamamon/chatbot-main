@@ -89,6 +89,32 @@ img { max-width: 100%; display: block; }
   display: inline-flex; align-items: center; justify-content: center;
 }
 
+.table-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 8px 14px; border-radius: 999px;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #fff; font-weight: 700; font-size: .9rem;
+  box-shadow: var(--shadow-sm); user-select: none;
+}
+.table-badge .tb-icon { font-size: 1rem; }
+.table-badge strong { font-weight: 800; }
+
+.table-notice {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px; border-radius: 12px;
+  background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe;
+  font-size: .92rem; margin: 8px 0 12px; font-weight: 600;
+}
+.table-notice .tb-icon { font-size: 1.1rem; }
+.form .hint {
+  font-size: .78rem; color: var(--text-muted); font-weight: 400;
+  margin-top: -2px;
+}
+.form input[readonly] {
+  background: #f5f5f5; color: var(--text); font-weight: 700;
+  cursor: default;
+}
+
 /* ===========================
    Hero
    =========================== */
@@ -441,6 +467,7 @@ img { max-width: 100%; display: block; }
 }
 @media (max-width: 480px) {
   .header-link { display: none; }
+  .table-badge { padding: 6px 10px; font-size: .8rem; }
   .brand-tag { display: none; }
   .brand-name { font-size: .95rem; }
   .header-inner { padding: 10px 16px; }

@@ -144,7 +144,22 @@
     send(inputEl.value);
   });
 
-  // Boot: welcome message + quick actions
+  function currentTable() {
+    try {
+      if (window.BBQ?.getTable) return window.BBQ.getTable();
+      const raw = sessionStorage.getItem('bbq_table');
+      return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+  }
+
+  function greetingWithTable(base) {
+    const t = currentTable();
+    if (t && t.number != null) {
+      return `${base}\n\n🪑 أنت على الطاولة رقم ${t.number} — الطلب رح يوصلك مباشرة.`;
+    }
+    return base;
+  }
+
   async function init() {
     let welcome = 'أهلاً بك! أنا مساعد المطعم. اسألني عن أي صنف، السعر، أو المكونات 🍕';
     let chatEnabled = true;
@@ -162,12 +177,21 @@
       return;
     }
 
-    addMessage(welcome, 'bot');
+    // Wait briefly for main.js to detect the table (fires bbq-table-ready)
+    const tableReady = new Promise((resolve) => {
+      if (currentTable()) return resolve();
+      const done = () => { document.removeEventListener('bbq-table-ready', done); resolve(); };
+      document.addEventListener('bbq-table-ready', done);
+      setTimeout(done, 1500);
+    });
+    await tableReady;
+
+    addMessage(greetingWithTable(welcome), 'bot');
     quickEl.innerHTML = `
       <button data-q="شو أنواع البيتزا الموجودة؟">🍕 البيتزا</button>
       <button data-q="شو الأصناف النباتية؟">🥗 نباتي</button>
-      <button data-q="كم رسوم التوصيل؟">🚗 التوصيل</button>
       <button data-q="شو الأصناف الحارة؟">🌶 حار</button>
+      <button data-q="اقترحي عليّ وجبة">💡 اقتراح</button>
     `;
     quickEl.querySelectorAll('button').forEach((b) => {
       b.addEventListener('click', () => send(b.dataset.q));

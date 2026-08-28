@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Optional
 
 from fastapi import Depends, FastAPI, File, HTTPException, Request, Response, UploadFile, status
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response as FastResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -35,6 +35,17 @@ from app.db import (
 from app.gemini_client import ask_gemini
 from app.imgproxy import DEFAULT_WIDTH, get_or_create_variant
 from app.menu import format_menu_for_prompt, get_full_menu
+from app.tables import (
+    build_scan_url,
+    create_table,
+    delete_table,
+    get_table,
+    get_table_by_token,
+    list_tables,
+    make_qr_png,
+    regenerate_token,
+    update_table,
+)
 
 ROOT = Path(__file__).resolve().parent.parent
 STATIC_DIR = ROOT / "static"
@@ -155,12 +166,20 @@ class OrderItem(BaseModel):
 
 class OrderRequest(BaseModel):
     customer_name: str = Field(..., min_length=1, max_length=100)
-    phone: str = Field(..., min_length=6, max_length=25)
-    address: Optional[str] = Field(None, max_length=300)
+    table_token: str = Field(..., min_length=4, max_length=64)
     notes: Optional[str] = Field(None, max_length=500)
     items: list[OrderItem] = Field(..., min_length=1)
-    delivery_fee: float = 0
     payment_method: str = "نقدي عند الاستلام"
+
+
+class TableCreatePayload(BaseModel):
+    number: str = Field(..., min_length=1, max_length=20)
+    label: Optional[str] = Field(None, max_length=50)
+
+
+class TableUpdatePayload(BaseModel):
+    label: Optional[str] = Field(None, max_length=50)
+    active: Optional[bool] = None
 
 
 class LoginRequest(BaseModel):
@@ -191,6 +210,12 @@ class CategoryPayload(BaseModel):
 # ---------- Public pages ----------
 @app.get("/")
 async def public_home():
+    return FileResponse(STATIC_DIR / "index.html")
+
+
+@app.get("/t/{token}")
+async def public_home_with_table(token: str):
+    """QR-scan entry point. Frontend reads the token from the URL."""
     return FileResponse(STATIC_DIR / "index.html")
 
 
@@ -268,36 +293,60 @@ async def api_chat(request: ChatRequest, http_req: Request):
         raise HTTPException(status_code=502, detail=str(e)) from e
 
 
+@app.get("/api/table/{token}")
+async def api_get_table(token: str):
+    """Public: resolve a QR token to a table number (used by frontend)."""
+    t = get_table_by_token(token)
+    if not t or not t["active"]:
+        raise HTTPException(status_code=404, detail="طاولة غير معروفة أو غير مفعّلة")
+    return {"number": t["number"], "label": t["label"], "token": t["token"]}
+
+
 @app.post("/api/orders")
 async def api_create_order(order: OrderRequest, http_req: Request):
     ip = client_ip(http_req)
     if not rate_limit(f"order:{ip}", max_hits=5, window_sec=300):
         raise HTTPException(status_code=429, detail="طلبات كثيرة، انتظر قليلاً")
+
+    table = get_table_by_token(order.table_token)
+    if not table or not table["active"]:
+        raise HTTPException(
+            status_code=400,
+            detail="رقم الطاولة غير صحيح، الرجاء مسح رمز QR الموجود على طاولتك",
+        )
+
     try:
         subtotal = sum(i.line_total for i in order.items)
-        total = subtotal + (order.delivery_fee or 0)
+        total = subtotal
         items_data = [i.model_dump() for i in order.items]
 
         conn = get_conn()
         cur = conn.execute(
             "INSERT INTO orders(customer_name,phone,address,notes,items_json,"
-            "subtotal,delivery_fee,total,status,payment_method) "
-            "VALUES(?,?,?,?,?,?,?,?,?,?)",
+            "subtotal,delivery_fee,total,status,payment_method,table_id,table_number) "
+            "VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
             (
                 order.customer_name,
-                order.phone,
-                order.address,
+                None,
+                None,
                 order.notes,
                 json.dumps(items_data, ensure_ascii=False),
                 subtotal,
-                order.delivery_fee or 0,
+                0,
                 total,
                 "جديد",
                 order.payment_method,
+                table["id"],
+                table["number"],
             ),
         )
         conn.commit()
-        return {"id": cur.lastrowid, "total": total, "subtotal": subtotal}
+        return {
+            "id": cur.lastrowid,
+            "total": total,
+            "subtotal": subtotal,
+            "table_number": table["number"],
+        }
     except Exception as e:
         log_error(
             source="order",
@@ -575,6 +624,69 @@ async def admin_update_order(oid: int, payload: dict):
         conn.execute("UPDATE orders SET status=? WHERE id=?", (payload["status"], oid))
         conn.commit()
     return {"ok": True}
+
+
+# ---------- Admin: tables ----------
+def _public_base_url(request: Request) -> str:
+    """Best-effort public base URL respecting reverse-proxy headers."""
+    proto = request.headers.get("x-forwarded-proto") or request.url.scheme
+    host = request.headers.get("x-forwarded-host") or request.headers.get("host") or request.url.netloc
+    return f"{proto}://{host}"
+
+
+@app.get("/admin/api/tables", dependencies=[Depends(require_admin)])
+async def admin_list_tables(request: Request):
+    base = _public_base_url(request)
+    tables = list_tables()
+    for t in tables:
+        t["scan_url"] = build_scan_url(base, t["token"])
+    return tables
+
+
+@app.post("/admin/api/tables", dependencies=[Depends(require_admin)])
+async def admin_create_table(payload: TableCreatePayload):
+    try:
+        t = create_table(payload.number, payload.label)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    return t
+
+
+@app.patch("/admin/api/tables/{tid}", dependencies=[Depends(require_admin)])
+async def admin_update_table(tid: int, payload: TableUpdatePayload):
+    if not get_table(tid):
+        raise HTTPException(status_code=404, detail="غير موجود")
+    update_table(tid, label=payload.label, active=payload.active)
+    return {"ok": True, "table": get_table(tid)}
+
+
+@app.post("/admin/api/tables/{tid}/regenerate", dependencies=[Depends(require_admin)])
+async def admin_regenerate_table(tid: int):
+    if not get_table(tid):
+        raise HTTPException(status_code=404, detail="غير موجود")
+    token = regenerate_token(tid)
+    return {"ok": True, "token": token}
+
+
+@app.delete("/admin/api/tables/{tid}", dependencies=[Depends(require_admin)])
+async def admin_delete_table(tid: int):
+    delete_table(tid)
+    return {"ok": True}
+
+
+@app.get("/admin/api/tables/{tid}/qr.png", dependencies=[Depends(require_admin)])
+async def admin_table_qr(tid: int, request: Request, size: int = 12):
+    t = get_table(tid)
+    if not t:
+        raise HTTPException(status_code=404, detail="غير موجود")
+    size = max(4, min(20, size))
+    url = build_scan_url(_public_base_url(request), t["token"])
+    png = make_qr_png(url, box_size=size)
+    return FastResponse(
+        content=png,
+        media_type="image/png",
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 # ---------- Admin: settings ----------

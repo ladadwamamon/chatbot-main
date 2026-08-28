@@ -100,16 +100,41 @@ CREATE TABLE IF NOT EXISTS orders (
   delivery_fee REAL DEFAULT 0,
   total REAL,
   status TEXT DEFAULT 'جديد',
-  payment_method TEXT DEFAULT 'نقدي عند الاستلام'
+  payment_method TEXT DEFAULT 'نقدي عند الاستلام',
+  table_id INTEGER,
+  table_number TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_orders_created ON orders(created_at DESC);
+
+CREATE TABLE IF NOT EXISTS tables (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  number TEXT NOT NULL UNIQUE,
+  label TEXT,
+  token TEXT NOT NULL UNIQUE,
+  active INTEGER DEFAULT 1,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_tables_token ON tables(token);
 """
+
+
+def _migrate() -> None:
+    """Add columns that older DBs may miss (idempotent), then create indices."""
+    conn = get_conn()
+    cols = {r["name"] for r in conn.execute("PRAGMA table_info(orders)")}
+    if "table_id" not in cols:
+        conn.execute("ALTER TABLE orders ADD COLUMN table_id INTEGER")
+    if "table_number" not in cols:
+        conn.execute("ALTER TABLE orders ADD COLUMN table_number TEXT")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_orders_table ON orders(table_id)")
+    conn.commit()
 
 
 def init_db() -> None:
     conn = get_conn()
     conn.executescript(SCHEMA)
     conn.commit()
+    _migrate()
 
 
 # ---------- Settings helpers ----------

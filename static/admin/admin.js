@@ -99,6 +99,7 @@
     dashboard: renderDashboard,
     menu: renderMenu,
     categories: renderCategories,
+    tables: renderTables,
     orders: renderOrders,
     chats: renderChats,
     errors: renderErrors,
@@ -111,7 +112,7 @@
 
   function activateNav(view) {
     $$('.side-nav a').forEach((a) => a.classList.toggle('active', a.dataset.view === view));
-    const titles = { dashboard: 'الملخص', menu: 'المنيو', categories: 'الفئات', orders: 'الطلبات', chats: 'المحادثات', errors: 'الأخطاء', settings: 'الإعدادات' };
+    const titles = { dashboard: 'الملخص', menu: 'المنيو', categories: 'الفئات', tables: 'الطاولات', orders: 'الطلبات', chats: 'المحادثات', errors: 'الأخطاء', settings: 'الإعدادات' };
     $('#view-title').textContent = titles[view] || '';
   }
 
@@ -564,6 +565,215 @@
     });
   }
 
+  // ---------- Tables (QR-based dine-in) ----------
+  async function renderTables() {
+    const tables = await api('/admin/api/tables');
+    $('#view').innerHTML = `
+      <div class="toolbar">
+        <button class="btn primary" id="add-table">+ إضافة طاولة</button>
+        <div style="flex:1"></div>
+        <button class="btn ghost" id="print-all-qr" ${tables.length ? '' : 'disabled'}>🖨️ طباعة كل رموز QR</button>
+      </div>
+      <div class="tables-grid">
+        ${tables.length ? tables.map(tableCardHtml).join('') : ''}
+      </div>
+      ${tables.length ? '' : '<div class="empty-state">لا توجد طاولات بعد. اضغط "إضافة طاولة" لتبدأ.</div>'}
+    `;
+    $('#add-table').addEventListener('click', () => openTableEditor(null));
+    if (tables.length) {
+      $('#print-all-qr').addEventListener('click', () => printAllQr(tables));
+    }
+    wireTableCards(tables);
+  }
+
+  function tableCardHtml(t) {
+    const inactive = t.active ? '' : 'inactive';
+    return `
+      <div class="table-card ${inactive}" data-id="${t.id}">
+        <div class="tc-head">
+          <div class="tc-num">#${esc(t.number)}</div>
+          <div class="tc-status">
+            ${t.active
+              ? '<span class="badge success">مفعّلة</span>'
+              : '<span class="badge gray">معطّلة</span>'}
+          </div>
+        </div>
+        ${t.label ? `<div class="tc-label">${esc(t.label)}</div>` : ''}
+        <div class="tc-qr">
+          <img src="/admin/api/tables/${t.id}/qr.png?v=${encodeURIComponent(t.token)}" alt="QR طاولة ${esc(t.number)}" loading="lazy">
+        </div>
+        <div class="tc-url" title="${esc(t.scan_url || '')}">${esc(t.scan_url || '')}</div>
+        <div class="tc-actions">
+          <button class="btn small primary" data-print="${t.id}">🖨️ طباعة</button>
+          <button class="btn small ghost" data-edit="${t.id}">✏️ تعديل</button>
+          <button class="btn small ghost" data-toggle="${t.id}">${t.active ? '⏸️ تعطيل' : '▶️ تفعيل'}</button>
+          <button class="btn small ghost" data-regen="${t.id}">🔄 توليد رمز جديد</button>
+          <button class="btn small danger" data-del="${t.id}">🗑</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function wireTableCards(tables) {
+    const byId = (id) => tables.find((x) => x.id === Number(id));
+    $$('[data-edit]').forEach((b) =>
+      b.addEventListener('click', () => openTableEditor(byId(b.dataset.edit)))
+    );
+    $$('[data-toggle]').forEach((b) =>
+      b.addEventListener('click', async () => {
+        const t = byId(b.dataset.toggle);
+        try {
+          await api(`/admin/api/tables/${t.id}`, {
+            method: 'PATCH',
+            body: { active: !t.active },
+          });
+          toast(t.active ? 'تم تعطيل الطاولة' : 'تم تفعيل الطاولة');
+          renderTables();
+        } catch (e) {
+          toast(e.message);
+        }
+      })
+    );
+    $$('[data-regen]').forEach((b) =>
+      b.addEventListener('click', async () => {
+        if (!confirm('توليد رمز جديد يبطل رمز QR القديم. متابعة؟')) return;
+        try {
+          await api(`/admin/api/tables/${b.dataset.regen}/regenerate`, { method: 'POST' });
+          toast('تم توليد رمز جديد');
+          renderTables();
+        } catch (e) {
+          toast(e.message);
+        }
+      })
+    );
+    $$('[data-del]').forEach((b) =>
+      b.addEventListener('click', async () => {
+        if (!confirm('حذف الطاولة نهائياً؟')) return;
+        try {
+          await api(`/admin/api/tables/${b.dataset.del}`, { method: 'DELETE' });
+          toast('تم الحذف');
+          renderTables();
+        } catch (e) {
+          toast(e.message);
+        }
+      })
+    );
+    $$('[data-print]').forEach((b) =>
+      b.addEventListener('click', () => {
+        const t = byId(b.dataset.print);
+        printOneQr(t);
+      })
+    );
+  }
+
+  function openTableEditor(t) {
+    const isNew = !t;
+    openModal(`
+      <h3>${isNew ? 'إضافة طاولة جديدة' : `تعديل طاولة #${esc(t.number)}`}</h3>
+      <div class="form-grid">
+        ${isNew
+          ? '<div class="field"><label>رقم الطاولة *</label><input id="t-number" placeholder="مثلاً 1"></div>'
+          : ''}
+        <div class="field">
+          <label>ملاحظة (اختياري)</label>
+          <input id="t-label" placeholder="مثلاً: قرب النافذة" value="${esc((t && t.label) || '')}">
+        </div>
+        ${isNew ? '' : `
+          <div class="field check">
+            <input type="checkbox" id="t-active" ${t.active ? 'checked' : ''}>
+            <label>مفعّلة</label>
+          </div>`}
+      </div>
+      <div class="modal-actions">
+        <button class="btn ghost" data-close>إلغاء</button>
+        <button class="btn primary" id="t-save">💾 حفظ</button>
+      </div>
+    `);
+    $('#t-save').addEventListener('click', async () => {
+      try {
+        if (isNew) {
+          const number = $('#t-number').value.trim();
+          const label = $('#t-label').value.trim() || null;
+          if (!number) return toast('رقم الطاولة مطلوب');
+          await api('/admin/api/tables', { method: 'POST', body: { number, label } });
+        } else {
+          const label = $('#t-label').value.trim();
+          const active = $('#t-active').checked;
+          await api(`/admin/api/tables/${t.id}`, {
+            method: 'PATCH',
+            body: { label, active },
+          });
+        }
+        closeModal();
+        toast('تم الحفظ');
+        renderTables();
+      } catch (e) {
+        toast(e.message);
+      }
+    });
+  }
+
+  function printOneQr(t) {
+    const restName = state.settings.restaurant_name || 'المطعم';
+    const html = `
+      <html dir="rtl" lang="ar"><head><meta charset="UTF-8">
+      <title>QR طاولة ${t.number}</title>
+      <style>
+        body { font-family: 'Tajawal', sans-serif; margin: 0; padding: 20mm; text-align: center; }
+        .sheet { page-break-after: always; padding: 30px 0; }
+        .rest { font-size: 24pt; font-weight: 800; margin-bottom: 8px; }
+        .tn { font-size: 60pt; font-weight: 800; color: #c1121f; margin: 18px 0 6px; }
+        .lbl { font-size: 14pt; color: #444; }
+        img { width: 260px; height: 260px; margin: 20px auto; display:block; }
+        .hint { font-size: 13pt; color: #555; margin-top: 10px; }
+      </style>
+      <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800&display=swap" rel="stylesheet">
+      </head><body>
+        <div class="sheet">
+          <div class="rest">${esc(restName)}</div>
+          <div>امسح الرمز لعرض المنيو والطلب</div>
+          <img src="/admin/api/tables/${t.id}/qr.png?size=18&v=${encodeURIComponent(t.token)}">
+          <div class="tn">طاولة ${esc(t.number)}</div>
+          ${t.label ? `<div class="lbl">${esc(t.label)}</div>` : ''}
+          <div class="hint">استخدم كاميرا الهاتف</div>
+        </div>
+      </body></html>`;
+    const w = window.open('', '_blank', 'width=600,height=800');
+    if (!w) return toast('السماح بالنوافذ المنبثقة مطلوب للطباعة');
+    w.document.open(); w.document.write(html); w.document.close();
+    setTimeout(() => { w.focus(); w.print(); }, 500);
+  }
+
+  function printAllQr(tables) {
+    const restName = state.settings.restaurant_name || 'المطعم';
+    const sheets = tables.map((t) => `
+      <div class="sheet">
+        <div class="rest">${esc(restName)}</div>
+        <div>امسح الرمز لعرض المنيو والطلب</div>
+        <img src="/admin/api/tables/${t.id}/qr.png?size=18&v=${encodeURIComponent(t.token)}">
+        <div class="tn">طاولة ${esc(t.number)}</div>
+        ${t.label ? `<div class="lbl">${esc(t.label)}</div>` : ''}
+      </div>
+    `).join('');
+    const html = `
+      <html dir="rtl" lang="ar"><head><meta charset="UTF-8">
+      <title>رموز QR — جميع الطاولات</title>
+      <style>
+        body { font-family: 'Tajawal', sans-serif; margin: 0; padding: 15mm; text-align: center; }
+        .sheet { page-break-after: always; padding: 20px 0; }
+        .rest { font-size: 22pt; font-weight: 800; margin-bottom: 6px; }
+        .tn { font-size: 54pt; font-weight: 800; color: #c1121f; margin: 14px 0 4px; }
+        .lbl { font-size: 12pt; color: #444; }
+        img { width: 260px; height: 260px; margin: 16px auto; display: block; }
+      </style>
+      <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800&display=swap" rel="stylesheet">
+      </head><body>${sheets}</body></html>`;
+    const w = window.open('', '_blank', 'width=700,height=900');
+    if (!w) return toast('السماح بالنوافذ المنبثقة مطلوب للطباعة');
+    w.document.open(); w.document.write(html); w.document.close();
+    setTimeout(() => { w.focus(); w.print(); }, 800);
+  }
+
   // ---------- Orders ----------
   async function renderOrders() {
     const orders = await api('/admin/api/orders');
@@ -572,12 +782,12 @@
         <div class="card-title">جميع الطلبات (${orders.length})</div>
         ${orders.length ? `
           <div class="table-wrap"><table class="table">
-            <thead><tr><th>#</th><th>الزبون</th><th>الهاتف</th><th>عدد الأصناف</th><th>المجموع</th><th>الحالة</th><th>الوقت</th><th></th></tr></thead>
+            <thead><tr><th>#</th><th>الطاولة</th><th>الزبون</th><th>عدد الأصناف</th><th>المجموع</th><th>الحالة</th><th>الوقت</th><th></th></tr></thead>
             <tbody>
               ${orders.map(o => `<tr>
                 <td>#${o.id}</td>
+                <td>${o.table_number ? `<span class="badge info">🪑 #${esc(o.table_number)}</span>` : '-'}</td>
                 <td>${esc(o.customer_name || '-')}</td>
-                <td>${esc(o.phone || '-')}</td>
                 <td>${o.items?.length || 0}</td>
                 <td>${money(o.total)}</td>
                 <td>${orderBadge(o.status)}</td>
@@ -604,9 +814,8 @@
     openModal(`
       <h3>الطلب #${o.id}</h3>
       <div class="form-grid">
+        <div><strong>الطاولة:</strong> ${o.table_number ? `🪑 #${esc(o.table_number)}` : '-'}</div>
         <div><strong>الزبون:</strong> ${esc(o.customer_name)}</div>
-        <div><strong>الهاتف:</strong> ${esc(o.phone || '-')}</div>
-        <div><strong>العنوان:</strong> ${esc(o.address || '-')}</div>
         <div><strong>الحالة:</strong> ${orderBadge(o.status)}</div>
         <div><strong>الدفع:</strong> ${esc(o.payment_method || '-')}</div>
         <div><strong>الوقت:</strong> ${fmtDate(o.created_at)}</div>
