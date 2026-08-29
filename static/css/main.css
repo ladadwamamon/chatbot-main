@@ -154,21 +154,20 @@ img { max-width: 100%; display: block; }
   height: 130%;
   background: linear-gradient(165deg, var(--hero-warm) 0%, var(--hero-warm-deep) 100%);
   border-radius: 0 52% 58% 0;
+  overflow: hidden;
   pointer-events: none;
   z-index: 0;
 }
-.hero-blob-pattern {
-  position: absolute; inset: 0;
-  opacity: .28;
-  background-image:
-    url("/static/images/brand/icon-pizza.png"),
-    url("/static/images/brand/icon-pizza-slice.png"),
-    url("/static/images/brand/icon-pizza-lg.png");
-  background-repeat: repeat;
-  background-size: 52px 52px, 46px 46px, 78px 78px;
-  background-position: 12px 10px, 48px 56px, 92px 18px;
+.hero-blob-icon {
+  position: absolute;
   filter: brightness(0) invert(1);
+  opacity: .34;
 }
+.hero-blob-icon:nth-child(1) { width: 42px; top: 12%; left: 14%; transform: rotate(-22deg); }
+.hero-blob-icon:nth-child(2) { width: 38px; top: 28%; left: 58%; transform: rotate(18deg); }
+.hero-blob-icon:nth-child(3) { width: 58px; top: 52%; left: 10%; transform: rotate(8deg); opacity: .26; }
+.hero-blob-icon:nth-child(4) { width: 36px; top: 68%; left: 48%; transform: rotate(-30deg); }
+.hero-blob-icon:nth-child(5) { width: 40px; top: 84%; left: 22%; transform: rotate(14deg); }
 .hero-dots {
   position: absolute;
   width: 72px; height: 28px;
@@ -268,23 +267,6 @@ img { max-width: 100%; display: block; }
   z-index: 0;
   pointer-events: none;
 }
-.hero-deco-icons {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-}
-.hero-deco-icons img {
-  position: absolute;
-  filter: brightness(0) invert(1);
-  opacity: .42;
-}
-.hero-deco-icons img:nth-child(1) { width: 50px; top: 8%; right: 6%; transform: rotate(-18deg); }
-.hero-deco-icons img:nth-child(2) { width: 46px; top: 18%; left: 4%; transform: rotate(22deg); }
-.hero-deco-icons img:nth-child(3) { width: 72px; bottom: 10%; right: 2%; transform: rotate(12deg); opacity: .32; }
-.hero-deco-icons img:nth-child(4) { width: 44px; bottom: 22%; left: 8%; transform: rotate(-28deg); }
-.hero-deco-icons img:nth-child(5) { width: 50px; top: 48%; left: -2%; transform: rotate(8deg); }
-.hero-deco-icons img:nth-child(6) { width: 64px; top: 6%; left: 28%; transform: rotate(-8deg); opacity: .28; }
 .hero-pizza {
   position: relative; z-index: 1;
   margin: 0;
@@ -670,16 +652,11 @@ input, textarea, select { font-size: max(16px, 1rem); }
   .hero-visual { order: -1; min-height: 0; padding: 12px 0 8px; margin-left: 0; }
   .hero-pizza { width: min(78vw, 300px); }
   .hero-burst { width: min(90vw, 360px); height: min(90vw, 360px); }
-  .hero-blob-pattern {
-    background-size: 42px 42px, 38px 38px, 62px 62px;
-    opacity: .24;
-  }
-  .hero-deco-icons img:nth-child(1) { width: 38px; }
-  .hero-deco-icons img:nth-child(2) { width: 36px; }
-  .hero-deco-icons img:nth-child(3) { width: 52px; }
-  .hero-deco-icons img:nth-child(4) { width: 34px; }
-  .hero-deco-icons img:nth-child(5) { width: 38px; }
-  .hero-deco-icons img:nth-child(6) { width: 48px; }
+  .hero-blob-icon:nth-child(1) { width: 34px; top: 18%; left: 10%; }
+  .hero-blob-icon:nth-child(2) { width: 32px; top: 22%; left: 78%; }
+  .hero-blob-icon:nth-child(3) { width: 44px; top: 62%; left: 8%; }
+  .hero-blob-icon:nth-child(4) { width: 30px; top: 58%; left: 82%; }
+  .hero-blob-icon:nth-child(5) { display: none; }
   .hero-cta { justify-content: center; margin-bottom: 18px; }
   .hero-picks-row { justify-content: center; }
   .hero-picks { padding-top: 30px; }
