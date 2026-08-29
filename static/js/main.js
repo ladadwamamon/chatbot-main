@@ -121,8 +121,23 @@
     document.title = `${r.name_en || 'Barbeque Pizza'} — ${r.name || ''}`;
     $('#brand-name').textContent = r.name || '';
     $('#brand-tag').textContent = r.name_en || '';
-    $('#hero-title').textContent = r.tagline || 'ألذ بيتزا في المدينة';
     $('#footer-name').textContent = r.name || '';
+
+    const name = (r.name || 'بيتزا باربيكيو').trim();
+    const parts = name.split(/\s+/);
+    const accentEl = $('#hero-title-accent');
+    const restEl = $('#hero-title-rest');
+    if (accentEl && restEl) {
+      if (parts.length >= 2) {
+        accentEl.textContent = parts[0];
+        restEl.textContent = parts.slice(1).join(' ');
+      } else {
+        accentEl.textContent = name;
+        restEl.textContent = '';
+      }
+    }
+    const sub = $('#hero-sub');
+    if (sub) sub.textContent = r.tagline || 'مكونات أفضل | ألذ بيتزا';
 
     if (r.theme?.primary) {
       document.documentElement.style.setProperty('--primary', r.theme.primary);
@@ -131,17 +146,69 @@
       document.documentElement.style.setProperty('--primary-dark', r.theme.primary_dark);
     }
 
-    // Hero badges (dine-in mode: table + phone only)
-    const badges = [];
-    if (STATE.table) badges.push(`🪑 طاولة #${STATE.table.number}`);
-    if (r.phone) badges.push(`📞 ${r.phone}`);
-    $('#hero-badges').innerHTML = badges.map((b) => `<span class="badge">${escapeHtml(b)}</span>`).join('');
+    const photo = $('#hero-photo');
+    if (photo) {
+      const items = (STATE.menu?.categories || []).flatMap((c) => c.items || []);
+      const preferred = items.find((i) => (i.image || '').includes('barbeque'))
+        || items.find((i) => i.image);
+      if (preferred?.image) {
+        photo.src = `/img/${preferred.image}?w=900`;
+        photo.alt = preferred.name || '';
+        photo.onerror = () => { photo.style.opacity = '0'; };
+      }
+    }
+    renderHeroPicks();
 
     // Footer info
     $('#footer-phone').textContent = r.phone ? `📞 ${r.phone}` : '';
     $('#footer-address').textContent = r.address ? `📍 ${r.address}` : '';
     $('#footer-hours').textContent = r.hours ? `🕒 ${r.hours}` : '';
   }
+
+  const shortName = (name) => {
+    const ar = String(name || '').split('/').pop().trim();
+    return ar || name;
+  };
+
+  function pizzaItems() {
+    const items = (STATE.menu?.categories || []).flatMap((c) => c.items || []);
+    return items.filter((i) => i.available && i.image);
+  }
+
+  let heroPickOffset = 0;
+
+  function renderHeroPicks() {
+    const wrap = $('#hero-picks');
+    if (!wrap) return;
+    const all = pizzaItems();
+    if (!all.length) { wrap.innerHTML = ''; return; }
+    const n = Math.min(3, all.length);
+    const shown = [];
+    for (let i = 0; i < n; i++) shown.push(all[(heroPickOffset + i) % all.length]);
+    wrap.innerHTML = shown.map((item) => `
+      <button type="button" class="hero-pick" data-id="${item.id}">
+        <span class="hero-pick-img">
+          <img src="/img/${item.image}?w=160" alt="" loading="lazy">
+        </span>
+        <span class="hero-pick-name">${escapeHtml(shortName(item.name))}</span>
+      </button>
+    `).join('');
+    wrap.querySelectorAll('.hero-pick').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const item = findItem(btn.dataset.id);
+        if (item) openItemModal(item);
+      });
+    });
+    const next = $('#hero-picks-next');
+    if (next) next.hidden = all.length <= 3;
+  }
+
+  $('#hero-picks-next')?.addEventListener('click', () => {
+    const all = pizzaItems();
+    if (!all.length) return;
+    heroPickOffset = (heroPickOffset + 1) % all.length;
+    renderHeroPicks();
+  });
 
   // ---------- Category chips ----------
   function renderChips() {

@@ -30,6 +30,7 @@
         </div>
         <button class="cart-btn" id="open-cart" aria-label="السلة">
           <span class="cart-icon">🛒</span>
+          <span class="cart-label">السلة</span>
           <span class="cart-count" id="cart-count">0</span>
         </button>
       </nav>
@@ -38,17 +39,33 @@
 
   <!-- Hero -->
   <section class="hero">
+    <div class="hero-blob" aria-hidden="true"><span class="hero-blob-pattern"></span></div>
+    <div class="hero-dots hero-dots-a" aria-hidden="true"></div>
+    <div class="hero-dots hero-dots-b" aria-hidden="true"></div>
+
     <div class="container hero-inner">
       <div class="hero-text">
-        <h1 id="hero-title">ألذ بيتزا في المدينة</h1>
-        <p id="hero-sub">اطلب أونلاين واستمتع بطعم لا يُقاوم — تسليم سريع، مكونات طازجة</p>
+        <h1 class="hero-title">
+          <span class="hero-title-accent" id="hero-title-accent">بيتزا</span>
+          <span id="hero-title-rest">باربيكيو</span>
+        </h1>
+        <p class="hero-sub" id="hero-sub">مكونات أفضل | ألذ بيتزا</p>
         <div class="hero-cta">
           <a href="#menu" class="btn primary">تصفح المنيو</a>
-          <button class="btn ghost" id="hero-chat">اسأل مساعدنا الذكي</button>
+          <button class="btn ghost" id="hero-chat">اسأل المساعد</button>
         </div>
-        <div class="hero-badges" id="hero-badges"></div>
+        <div class="hero-picks-row">
+          <div class="hero-picks" id="hero-picks"></div>
+          <button type="button" class="hero-picks-next" id="hero-picks-next" aria-label="المزيد من الأصناف">‹</button>
+        </div>
       </div>
-      <div class="hero-visual">🍕</div>
+
+      <div class="hero-visual">
+        <div class="hero-burst" aria-hidden="true"></div>
+        <figure class="hero-pizza">
+          <img id="hero-photo" src="/img/barbeque-pizza.png?w=900" alt="بيتزا باربيكيو" width="720" height="720">
+        </figure>
+      </div>
     </div>
   </section>
 
