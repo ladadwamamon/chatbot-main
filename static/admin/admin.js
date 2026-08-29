@@ -988,8 +988,8 @@
       <div class="card">
         <div class="card-title">🎨 المظهر</div>
         <div class="form-grid">
-          <div class="field"><label>اللون الرئيسي</label><input type="color" data-k="primary_color" value="${esc(s.primary_color || '#e63946')}"></div>
-          <div class="field"><label>اللون الرئيسي الداكن</label><input type="color" data-k="primary_color_dark" value="${esc(s.primary_color_dark || '#c1121f')}"></div>
+          <div class="field"><label>اللون الرئيسي</label><input type="color" data-k="primary_color" value="${esc(s.primary_color || '#4b1a0c')}"></div>
+          <div class="field"><label>اللون الرئيسي الداكن</label><input type="color" data-k="primary_color_dark" value="${esc(s.primary_color_dark || '#2f1008')}"></div>
         </div>
       </div>
 

@@ -154,6 +154,11 @@ def _migrate() -> None:
     if "table_number" not in cols:
         conn.execute("ALTER TABLE orders ADD COLUMN table_number TEXT")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_orders_table ON orders(table_id)")
+    # Rebrand: migrate previous default reds to the restaurant brown.
+    row = conn.execute("SELECT value FROM settings WHERE key='primary_color'").fetchone()
+    if row and str(row["value"]).lower() in {"#e63946", "#c1121f"}:
+        conn.execute("UPDATE settings SET value='#4b1a0c' WHERE key='primary_color'")
+        conn.execute("UPDATE settings SET value='#2f1008' WHERE key='primary_color_dark'")
     conn.commit()
 
 
@@ -197,8 +202,8 @@ DEFAULT_SETTINGS = {
         "\n  التفاصيل: ..."
         "\n  السعر: .. شيكل"
     ),
-    "primary_color": "#e63946",
-    "primary_color_dark": "#c1121f",
+    "primary_color": "#4b1a0c",
+    "primary_color_dark": "#2f1008",
 }
 
 

@@ -79,7 +79,10 @@ input, textarea, select { color: var(--text); }
   padding: 20px 12px; position: sticky; top: 0; height: 100vh;
 }
 .sidebar-brand { display: flex; align-items: center; gap: 10px; padding: 4px 8px 20px; border-bottom: 1px solid rgba(255,255,255,.08); margin-bottom: 12px; }
-.sidebar .brand-logo { width: 42px; height: 42px; font-size: 1.2rem; border-radius: 50%; background: linear-gradient(135deg, var(--primary), var(--primary-dark)); display: flex; align-items: center; justify-content: center; }
+.sidebar .brand-logo {
+  width: 42px; height: 42px; border-radius: 50%; overflow: hidden;
+  display: block; object-fit: cover; flex-shrink: 0;
+}
 .sidebar .brand-name { font-weight: 800; }
 .sidebar .brand-tag { font-size: .76rem; color: #9ca3af; }
 .side-nav { display: flex; flex-direction: column; gap: 4px; flex: 1; }
