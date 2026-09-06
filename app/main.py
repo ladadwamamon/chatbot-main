@@ -32,6 +32,7 @@ from app.db import (
     row_to_dict,
     set_setting,
 )
+from app.chat_actions import extract_actions, format_cart_for_prompt
 from app.gemini_client import ask_gemini
 from app.imgproxy import DEFAULT_WIDTH, get_or_create_variant
 from app.manager_routes import bootstrap_local_venue, router as manager_router
@@ -151,15 +152,26 @@ class ChatMessage(BaseModel):
     content: str
 
 
+class ChatCartLine(BaseModel):
+    name: str = Field(..., max_length=120)
+    size: Optional[str] = Field(None, max_length=8)
+    quantity: int = Field(1, ge=1, le=50)
+    line_total: float = 0
+
+
 class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1, max_length=1000)
     history: list[ChatMessage] = Field(default_factory=list, max_length=12)
     session_id: Optional[str] = None
+    cart: list[ChatCartLine] = Field(default_factory=list, max_length=40)
 
 
 class ChatResponse(BaseModel):
     reply: str
     session_id: str
+    items: list[int] = Field(default_factory=list)
+    categories: list[int] = Field(default_factory=list)
+    show_cart: bool = False
 
 
 class OrderItem(BaseModel):
@@ -291,9 +303,39 @@ async def api_chat(request: ChatRequest, http_req: Request):
     session_id = request.session_id or str(uuid.uuid4())
     try:
         history = [{"role": m.role, "content": m.content} for m in request.history]
-        menu_text = format_menu_for_prompt()
-        reply = await ask_gemini(request.message, menu_text, history, session_id=session_id)
-        return ChatResponse(reply=reply, session_id=session_id)
+        menu = get_full_menu()
+        menu_text = format_menu_for_prompt(menu)
+        currency = (menu.get("restaurant") or {}).get("delivery", {}).get("currency") or "شيكل"
+        cart_text = format_cart_for_prompt(
+            [
+                {
+                    "name": c.name,
+                    "size": c.size,
+                    "quantity": c.quantity,
+                    "line_total": c.line_total,
+                }
+                for c in request.cart
+            ],
+            currency,
+        )
+        extra = f"\n\n=== سلة الزبون الآن ===\n{cart_text}\n=== نهاية السلة ==="
+        reply = await ask_gemini(
+            request.message,
+            menu_text,
+            history,
+            session_id=session_id,
+            extra_context=extra,
+        )
+        visible, actions = extract_actions(
+            reply, menu, user_message=request.message
+        )
+        return ChatResponse(
+            reply=visible,
+            session_id=session_id,
+            items=actions["items"],
+            categories=actions["categories"],
+            show_cart=actions["show_cart"],
+        )
     except ValueError as e:
         log_error(
             source="chat",

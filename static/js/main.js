@@ -401,24 +401,128 @@
   $('#qty-dec').addEventListener('click', () => {
     if (STATE.modalQty > 1) { STATE.modalQty--; $('#qty-value').textContent = STATE.modalQty; updateModalTotal(); }
   });
-  $('#add-to-cart').addEventListener('click', () => {
-    const item = STATE.modalItem;
-    if (!item) return;
-    const size = STATE.modalSize;
-    const unit = size ? size.price : item.price;
-    STATE.cart.push({
+  function addToCart(item, { sizeName = null, quantity = 1 } = {}) {
+    if (!item) return null;
+    if (!item.available) {
+      showToast('هذا الصنف غير متوفر حالياً');
+      return null;
+    }
+    const qty = Math.max(1, Math.min(30, Number(quantity) || 1));
+    let size = null;
+    let unit = item.price ?? 0;
+    if (item.sizes && item.sizes.length) {
+      size = item.sizes.find((s) => s.name === sizeName)
+        || item.sizes[Math.floor(item.sizes.length / 2)];
+      unit = size.price;
+    }
+    const line = {
       item_id: item.id,
       name: item.name,
       image: item.image,
       size: size ? size.name : null,
-      quantity: STATE.modalQty,
+      quantity: qty,
       unit_price: unit,
-      line_total: unit * STATE.modalQty,
-    });
+      line_total: unit * qty,
+    };
+    STATE.cart.push(line);
     saveCart();
     updateCartCount();
-    closeItemModal();
     showToast(`تمت الإضافة: ${item.name}`);
+    document.dispatchEvent(new CustomEvent('bbq-cart-changed', { detail: { cart: STATE.cart, added: line } }));
+    return line;
+  }
+
+  function getCartSummary() {
+    const items = STATE.cart;
+    return {
+      items,
+      count: items.reduce((s, i) => s + i.quantity, 0),
+      total: items.reduce((s, i) => s + i.line_total, 0),
+      currency: currency(),
+    };
+  }
+
+  function flashEl(el) {
+    if (!el) return;
+    el.classList.remove('menu-flash');
+    void el.offsetWidth;
+    el.classList.add('menu-flash');
+    setTimeout(() => el.classList.remove('menu-flash'), 1800);
+  }
+
+  function clearNavFilters() {
+    STATE.filters.category = 'all';
+    STATE.filters.search = '';
+    STATE.filters.vegetarian = false;
+    STATE.filters.spicy = false;
+    const search = $('#search');
+    if (search) search.value = '';
+    const veg = $('#filter-veg');
+    const spicy = $('#filter-spicy');
+    if (veg) veg.checked = false;
+    if (spicy) spicy.checked = false;
+    $$('#chips .chip').forEach((b) => {
+      b.classList.toggle('active', b.dataset.cat === 'all');
+    });
+    renderMenu();
+  }
+
+  function navigateToCategory(id) {
+    document.dispatchEvent(new CustomEvent('close-chat'));
+    STATE.filters.search = '';
+    STATE.filters.vegetarian = false;
+    STATE.filters.spicy = false;
+    const search = $('#search');
+    if (search) search.value = '';
+    const veg = $('#filter-veg');
+    const spicy = $('#filter-spicy');
+    if (veg) veg.checked = false;
+    if (spicy) spicy.checked = false;
+    STATE.filters.category = String(id);
+    $$('#chips .chip').forEach((b) => {
+      b.classList.toggle('active', String(b.dataset.cat) === String(id));
+    });
+    renderMenu();
+    setTimeout(() => {
+      const block = document.querySelector(`.category-block[data-cat="${id}"]`)
+        || document.querySelector('#menu');
+      block?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      flashEl(block);
+    }, 280);
+    return true;
+  }
+
+  function navigateToItem(id, { openModal = true } = {}) {
+    document.dispatchEvent(new CustomEvent('close-chat'));
+    const item = findItem(id);
+    if (!item) {
+      showToast('ما لقيت الصنف بالمنيو');
+      return false;
+    }
+    clearNavFilters();
+    setTimeout(() => {
+      const card = document.querySelector(`.item-card[data-id="${id}"]`);
+      if (card) {
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        flashEl(card);
+      } else {
+        document.querySelector('#menu')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+      if (openModal && item.available) {
+        setTimeout(() => openItemModal(item), 420);
+      }
+    }, 280);
+    return true;
+  }
+
+  $('#add-to-cart').addEventListener('click', () => {
+    const item = STATE.modalItem;
+    if (!item) return;
+    addToCart(item, {
+      sizeName: STATE.modalSize ? STATE.modalSize.name : null,
+      quantity: STATE.modalQty,
+    });
+    closeItemModal();
   });
 
   // ---------- Cart ----------
@@ -652,6 +756,20 @@
   // Expose openChat via widget script trigger
   $('#hero-chat').addEventListener('click', () => {
     document.dispatchEvent(new CustomEvent('open-chat'));
+  });
+
+  Object.assign(window.BBQ, {
+    getTable: () => STATE.table,
+    getMenu: () => STATE.menu,
+    findItem,
+    getCart: () => STATE.cart.slice(),
+    getCartSummary,
+    addToCart,
+    openCart,
+    navigateToItem,
+    navigateToCategory,
+    money,
+    currency,
   });
 
   // Boot

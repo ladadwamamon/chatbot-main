@@ -8,6 +8,7 @@ import time
 import httpx
 from dotenv import load_dotenv
 
+from app.chat_actions import ACTIONS_INSTRUCTIONS, sanitize_reply
 from app.db import all_settings, log_chat, log_error
 
 load_dotenv()
@@ -25,7 +26,7 @@ def clean_reply(text: str) -> str:
     text = re.sub(r"(?m)^\s*\*\s+", "• ", text)
     text = text.replace("*", "")
     text = re.sub(r"(?m)^\s*[-–—]\s+", "• ", text)
-    return text.strip()
+    return sanitize_reply(text)
 
 
 def _trim_history(history: list[dict] | None) -> list[dict]:
@@ -34,10 +35,14 @@ def _trim_history(history: list[dict] | None) -> list[dict]:
     return history[-MAX_HISTORY_MESSAGES:]
 
 
-def build_system_prompt(menu_text: str) -> str:
+def build_system_prompt(menu_text: str, extra_context: str = "") -> str:
     settings = all_settings()
     base = settings.get("chatbot_system_prompt", "")
-    return f"{base}\n\n=== المنيو ===\n{menu_text}\n=== نهاية المنيو ==="
+    text = f"{base}\n\n=== المنيو ===\n{menu_text}\n=== نهاية المنيو ==="
+    if extra_context:
+        text += extra_context
+    text += ACTIONS_INSTRUCTIONS
+    return text
 
 
 def _resolve_thinking_level(raw: str | None) -> str:
@@ -108,6 +113,7 @@ async def ask_gemini(
     history: list[dict] | None = None,
     *,
     session_id: str | None = None,
+    extra_context: str = "",
 ) -> str:
     settings = all_settings()
 
@@ -123,7 +129,7 @@ async def ask_gemini(
         f"{model}:generateContent"
     )
 
-    system_text = build_system_prompt(menu_text)
+    system_text = build_system_prompt(menu_text, extra_context)
 
     contents = [
         {"role": "user", "parts": [{"text": system_text}]},

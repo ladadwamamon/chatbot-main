@@ -35,7 +35,7 @@
   bottom: 24px;
   left: 24px;
   z-index: 46;
-  width: 380px;
+  width: 400px;
   max-width: calc(100vw - 32px);
   height: 580px;
   max-height: calc(100vh - 48px);
@@ -106,8 +106,15 @@ body.chat-open-mobile { overflow: hidden; }
   display: flex; align-items: center; justify-content: center;
   font-size: 1rem; flex-shrink: 0;
 }
+.msg-stack {
+  max-width: 88%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
 .msg-bubble {
-  max-width: 78%; padding: 10px 14px;
+  max-width: 100%; padding: 10px 14px;
   border-radius: 16px;
   font-size: .92rem; line-height: 1.55;
   word-wrap: break-word; white-space: pre-wrap;
@@ -145,6 +152,95 @@ body.chat-open-mobile { overflow: hidden; }
   margin: 4px 0; line-height: 1.5;
 }
 .msg-bubble.rich .plain-line { margin: 4px 0; }
+
+.chat-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.chat-item-card,
+.chat-cat-card,
+.chat-cart-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 10px;
+  box-shadow: 0 4px 14px rgba(75, 26, 12, .06);
+}
+.chat-item-top { display: flex; gap: 10px; align-items: center; }
+.chat-item-img {
+  width: 56px; height: 56px; border-radius: 14px;
+  overflow: hidden; flex-shrink: 0;
+  background: #f4ede0;
+}
+.chat-item-img img { width: 100%; height: 100%; object-fit: cover; }
+.chat-item-ph { display: grid; place-items: center; height: 100%; font-size: 1.4rem; }
+.chat-item-meta { min-width: 0; flex: 1; }
+.chat-item-name {
+  font-weight: 800; font-size: .88rem; line-height: 1.3;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.chat-item-price { color: var(--primary); font-weight: 800; font-size: .82rem; margin-top: 3px; }
+.chat-sizes { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.chat-size {
+  border: 1px solid var(--border-strong);
+  background: #fff;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-family: inherit;
+  font-size: .74rem;
+  font-weight: 700;
+  cursor: pointer;
+  color: var(--text);
+}
+.chat-size.selected {
+  background: var(--primary);
+  color: #fff;
+  border-color: transparent;
+}
+.chat-item-actions,
+.chat-cat-card {
+  display: flex; gap: 6px; align-items: center;
+}
+.chat-item-actions { margin-top: 8px; flex-wrap: wrap; }
+.chat-cat-card { justify-content: space-between; }
+.chat-cat-info { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.chat-cat-icon { font-size: 1.25rem; }
+.chat-cat-name { font-weight: 800; font-size: .88rem; }
+.chat-cat-hint { font-size: .72rem; color: var(--text-muted); }
+.chat-btn {
+  border: 0;
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-family: inherit;
+  font-size: .78rem;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.chat-btn.primary {
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: #fff;
+}
+.chat-btn.primary.done { background: #0f9d58; }
+.chat-btn.ghost {
+  background: #f6eee8;
+  color: var(--primary-dark);
+}
+.chat-btn.block { width: 100%; margin-top: 8px; }
+.chat-cart-title { font-weight: 800; font-size: .86rem; margin-bottom: 8px; color: var(--primary-dark); }
+.chat-cart-empty { font-size: .82rem; color: var(--text-muted); }
+.chat-cart-lines { display: flex; flex-direction: column; gap: 6px; }
+.chat-cart-row {
+  display: flex; justify-content: space-between; gap: 8px;
+  font-size: .8rem; color: var(--text);
+}
+.chat-cart-total {
+  display: flex; justify-content: space-between;
+  margin-top: 8px; padding-top: 8px;
+  border-top: 1px dashed var(--border);
+  font-size: .86rem; font-weight: 800;
+}
 
 @keyframes msg-in {
   from { opacity: 0; transform: translateY(6px); }
@@ -268,7 +364,8 @@ body.chat-open-mobile { overflow: hidden; }
   .chat-close { width: 34px; height: 34px; }
 
   .chat-body { padding: 12px; gap: 8px; }
-  .msg-bubble { max-width: 82%; font-size: .95rem; }
+  .msg-stack { max-width: 90%; }
+  .msg-bubble { font-size: .95rem; }
 
   .chat-quick {
     padding: 6px 10px;
@@ -286,7 +383,8 @@ body.chat-open-mobile { overflow: hidden; }
 
 @media (max-width: 360px) {
   .msg-avatar { width: 24px; height: 24px; font-size: .9rem; }
-  .msg-bubble { max-width: 85%; font-size: .9rem; padding: 8px 12px; }
+  .msg-stack { max-width: 92%; }
+  .msg-bubble { font-size: .9rem; padding: 8px 12px; }
   .chat-panel {
     left: 8px; right: 8px;
     bottom: calc(8px + env(safe-area-inset-bottom, 0px));

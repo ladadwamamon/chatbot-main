@@ -64,9 +64,9 @@ def _num(v: str | None) -> float | None:
         return None
 
 
-def format_menu_for_prompt() -> str:
+def format_menu_for_prompt(menu: dict | None = None) -> str:
     """Compact Arabic menu text — for AI prompt (fewer tokens)."""
-    menu = get_full_menu()
+    menu = menu or get_full_menu()
     r = menu["restaurant"]
     d = r["delivery"]
     currency = d.get("currency") or "شيكل"
