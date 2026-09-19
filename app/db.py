@@ -239,6 +239,17 @@ def ensure_default_settings() -> None:
             set_setting(k, v)
 
 
+def wipe_menu() -> dict[str, int]:
+    """Remove catalog items/categories so a tenant starts from an empty template."""
+    conn = get_conn()
+    items = conn.execute("SELECT COUNT(*) c FROM items").fetchone()["c"]
+    cats = conn.execute("SELECT COUNT(*) c FROM categories").fetchone()["c"]
+    conn.execute("DELETE FROM items")
+    conn.execute("DELETE FROM categories")
+    conn.commit()
+    return {"items": items, "categories": cats}
+
+
 # ---------- Row helpers ----------
 def row_to_dict(row: sqlite3.Row | None) -> dict[str, Any] | None:
     if row is None:

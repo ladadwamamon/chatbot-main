@@ -6,7 +6,7 @@ import time
 
 from app.db import all_settings, get_conn
 
-APP_VERSION = "1.1.0"
+APP_VERSION = "1.2.0"
 
 
 def local_snapshot() -> dict:
@@ -76,4 +76,5 @@ AGENT_SETTING_KEYS = {
     "restaurant_tagline",
     "primary_color",
     "primary_color_dark",
+    "currency",
 }

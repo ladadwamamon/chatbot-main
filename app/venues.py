@@ -209,21 +209,45 @@ def ensure_local_venue(name: str, name_en: str | None = None) -> dict[str, Any]:
     })
 
 
+def _env_line(key: str, value: Any) -> str:
+    raw = str(value or "").replace("\r", " ").replace("\n", " ").strip()
+    return f"{key}={raw}"
+
+
 def compose_kit(venue: dict[str, Any]) -> dict[str, str]:
-    """Deploy kit the owner copies into Portainer / .env for a new client."""
+    """Deploy kit: shared product template, per-tenant branding, empty menu."""
     port = venue.get("suggested_port") or 8182
     slug = venue["slug"]
+    meta = venue.get("meta") or {}
+    name = venue.get("name") or ""
+    name_en = venue.get("name_en") or ""
+    tagline = meta.get("tagline") or venue.get("restaurant_tagline") or ""
+    primary = meta.get("primary_color") or "#1e3a5f"
+    primary_dark = meta.get("primary_color_dark") or "#0f2744"
+    welcome = meta.get("welcome") or (f"أهلاً! أنا مساعد {name}. اسألني عن الأصناف أو الأسعار." if name else "")
+    currency = meta.get("currency") or "₪"
+    public_url = venue.get("public_url") or ""
+
     env = "\n".join([
-        f"HOST_PORT={port}",
-        f"APP_ENV=production",
-        f"GEMINI_API_KEY=",
-        f"GEMINI_MODEL=gemini-3.5-flash-lite",
-        f"ADMIN_PASSWORD={venue.get('admin_password') or ''}",
-        f"ADMIN_SECRET={venue.get('admin_secret') or ''}",
-        f"MANAGER_TOKEN={venue.get('manager_token') or ''}",
-        f"PUBLIC_URL={venue.get('public_url') or 'https://' + slug + '.example.com'}",
+        _env_line("HOST_PORT", port),
+        _env_line("APP_ENV", "production"),
+        _env_line("GEMINI_API_KEY", ""),
+        _env_line("GEMINI_MODEL", meta.get("model") or "gemini-3.6-flash"),
+        _env_line("ADMIN_PASSWORD", venue.get("admin_password") or ""),
+        _env_line("ADMIN_SECRET", venue.get("admin_secret") or ""),
+        _env_line("MANAGER_TOKEN", venue.get("manager_token") or ""),
+        _env_line("PUBLIC_URL", public_url),
+        _env_line("SKIP_SEED", "1"),
+        _env_line("RESTAURANT_NAME", name),
+        _env_line("RESTAURANT_NAME_EN", name_en),
+        _env_line("RESTAURANT_TAGLINE", tagline),
+        _env_line("PRIMARY_COLOR", primary),
+        _env_line("PRIMARY_COLOR_DARK", primary_dark),
+        _env_line("CHATBOT_WELCOME", welcome),
+        _env_line("CURRENCY", currency),
     ])
-    compose = f"""version: "3.9"
+    compose = f"""# Product template (QR, chat, cart, admin). Menu/logo/colors come from env + empty brand volume.
+version: "3.9"
 
 services:
   app:
@@ -232,17 +256,28 @@ services:
     restart: unless-stopped
     ports:
       - "${{HOST_PORT:-{port}}}:8000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       - APP_ENV=production
       - GEMINI_API_KEY=${{GEMINI_API_KEY}}
-      - GEMINI_MODEL=${{GEMINI_MODEL:-gemini-3.5-flash-lite}}
+      - GEMINI_MODEL=${{GEMINI_MODEL:-gemini-3.6-flash}}
       - ADMIN_PASSWORD=${{ADMIN_PASSWORD}}
       - ADMIN_SECRET=${{ADMIN_SECRET}}
       - MANAGER_TOKEN=${{MANAGER_TOKEN}}
       - PUBLIC_URL=${{PUBLIC_URL}}
+      - SKIP_SEED=${{SKIP_SEED:-1}}
+      - RESTAURANT_NAME=${{RESTAURANT_NAME}}
+      - RESTAURANT_NAME_EN=${{RESTAURANT_NAME_EN}}
+      - RESTAURANT_TAGLINE=${{RESTAURANT_TAGLINE}}
+      - PRIMARY_COLOR=${{PRIMARY_COLOR}}
+      - PRIMARY_COLOR_DARK=${{PRIMARY_COLOR_DARK}}
+      - CHATBOT_WELCOME=${{CHATBOT_WELCOME}}
+      - CURRENCY=${{CURRENCY}}
     volumes:
       - {slug}_data:/app/data
       - {slug}_images:/app/static/images/food
+      - {slug}_brand:/app/static/images/brand
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/health"]
       interval: 30s
@@ -253,5 +288,6 @@ services:
 volumes:
   {slug}_data:
   {slug}_images:
+  {slug}_brand:
 """
     return {"env": env, "compose": compose, "container": slug, "port": str(port)}

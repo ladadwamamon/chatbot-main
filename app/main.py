@@ -37,6 +37,7 @@ from app.gemini_client import ask_gemini
 from app.imgproxy import DEFAULT_WIDTH, get_or_create_variant
 from app.manager_routes import bootstrap_local_venue, router as manager_router
 from app.menu import format_menu_for_prompt, get_full_menu
+from app.tenant import apply_tenant_env, skip_seed
 from app.tables import (
     build_scan_url,
     create_table,
@@ -52,7 +53,9 @@ from app.tables import (
 ROOT = Path(__file__).resolve().parent.parent
 STATIC_DIR = ROOT / "static"
 IMAGES_DIR = STATIC_DIR / "images" / "food"
+BRAND_DIR = STATIC_DIR / "images" / "brand"
 IMAGES_DIR.mkdir(parents=True, exist_ok=True)
+BRAND_DIR.mkdir(parents=True, exist_ok=True)
 
 app = FastAPI(title="Venue Platform")
 app.include_router(manager_router)
@@ -85,15 +88,16 @@ def client_ip(request: Request) -> str:
 async def _startup() -> None:
     init_db()
     ensure_default_settings()
-    # Auto-seed if DB has no items (first-run in a fresh volume)
-    try:
-        conn = get_conn()
-        n = conn.execute("SELECT COUNT(*) c FROM items").fetchone()["c"]
-        if n == 0:
-            from app.seed import seed_all
-            seed_all(force=False)
-    except Exception:
-        pass
+    apply_tenant_env()
+    if not skip_seed():
+        try:
+            conn = get_conn()
+            n = conn.execute("SELECT COUNT(*) c FROM items").fetchone()["c"]
+            if n == 0:
+                from app.seed import seed_all
+                seed_all(force=False)
+        except Exception:
+            pass
     try:
         bootstrap_local_venue()
     except Exception:
@@ -278,8 +282,21 @@ async def api_restaurant():
         "theme": {
             "primary": s.get("primary_color"),
             "primary_dark": s.get("primary_color_dark"),
+            "logo": _brand_logo_url(),
         },
     }
+
+
+def _brand_logo_url() -> str | None:
+    named = (all_settings().get("brand_logo") or "").strip()
+    if named:
+        p = BRAND_DIR / Path(named).name
+        if p.is_file():
+            return f"/static/images/brand/{p.name}"
+    for name in ("logo.jpg", "logo.jpeg", "logo.png", "logo.webp", "logo.gif"):
+        if (BRAND_DIR / name).is_file():
+            return f"/static/images/brand/{name}"
+    return None
 
 
 def _to_float(v):
@@ -697,9 +714,16 @@ async def admin_update_order(oid: int, payload: dict):
 
 # ---------- Admin: tables ----------
 def _public_base_url(request: Request) -> str:
-    """Best-effort public base URL respecting reverse-proxy headers."""
+    """Prefer PUBLIC_URL so QR codes stay on the customer domain."""
+    env = (os.getenv("PUBLIC_URL") or "").strip().rstrip("/")
+    if env:
+        return env
     proto = request.headers.get("x-forwarded-proto") or request.url.scheme
-    host = request.headers.get("x-forwarded-host") or request.headers.get("host") or request.url.netloc
+    host = (
+        request.headers.get("x-forwarded-host")
+        or request.headers.get("host")
+        or request.url.netloc
+    )
     return f"{proto}://{host}"
 
 
@@ -781,6 +805,28 @@ async def admin_update_settings(payload: dict):
         if k in RESTAURANT_SETTING_KEYS:
             set_setting(k, str(v))
     return {"ok": True, "settings": {k: all_settings().get(k) for k in RESTAURANT_SETTING_KEYS}}
+
+
+@app.post("/admin/api/logo", dependencies=[Depends(require_admin)])
+async def admin_upload_logo(file: UploadFile = File(...)):
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="ملف بدون اسم")
+    ext = Path(file.filename).suffix.lower()
+    if ext not in {".png", ".jpg", ".jpeg", ".webp"}:
+        raise HTTPException(status_code=400, detail="ارفع صورة PNG أو JPG أو WebP")
+    if ext == ".jpeg":
+        ext = ".jpg"
+    BRAND_DIR.mkdir(parents=True, exist_ok=True)
+    for old in BRAND_DIR.glob("logo.*"):
+        try:
+            old.unlink()
+        except OSError:
+            pass
+    target = BRAND_DIR / f"logo{ext}"
+    with target.open("wb") as f:
+        shutil.copyfileobj(file.file, f)
+    set_setting("brand_logo", target.name)
+    return {"ok": True, "logo": _brand_logo_url()}
 
 
 # ---------- Static ----------

@@ -148,7 +148,16 @@
       return;
     }
     await refreshBadges();
+    applyAdminBrand();
     navigate();
+  }
+
+  function applyAdminBrand() {
+    const s = state.settings || {};
+    const tag = $('#admin-brand-tag');
+    if (tag) tag.textContent = s.restaurant_name_en || s.restaurant_name || 'لوحة المطعم';
+    const img = $('#admin-logo');
+    if (img && s.restaurant_name) img.alt = s.restaurant_name;
   }
 
   async function refreshBadges() {
@@ -988,8 +997,16 @@
       <div class="card">
         <div class="card-title">🎨 المظهر</div>
         <div class="form-grid">
-          <div class="field"><label>اللون الرئيسي</label><input type="color" data-k="primary_color" value="${esc(s.primary_color || '#4b1a0c')}"></div>
-          <div class="field"><label>اللون الرئيسي الداكن</label><input type="color" data-k="primary_color_dark" value="${esc(s.primary_color_dark || '#2f1008')}"></div>
+          <div class="field"><label>اللون الرئيسي</label><input type="color" data-k="primary_color" value="${esc(s.primary_color || '#1e3a5f')}"></div>
+          <div class="field"><label>اللون الرئيسي الداكن</label><input type="color" data-k="primary_color_dark" value="${esc(s.primary_color_dark || '#0f2744')}"></div>
+          <div class="field full">
+            <label>شعار المطعم</label>
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+              <img id="logo-preview" src="/static/images/brand/logo.jpg" alt="" width="56" height="56" style="border-radius:50%;object-fit:cover;background:#eee" onerror="this.style.display='none'">
+              <input type="file" id="logo-file" accept="image/png,image/jpeg,image/webp">
+            </div>
+            <span class="hint" style="display:block;margin-top:6px;color:var(--muted)">PNG أو JPG. يظهر في رأس الموقع ولوحة الإدارة.</span>
+          </div>
         </div>
       </div>
 
@@ -1006,8 +1023,27 @@
       });
       try {
         await api('/admin/api/settings', { method: 'PATCH', body: payload });
+        state.settings = { ...state.settings, ...payload };
+        applyAdminBrand();
         toast('تم الحفظ');
       } catch (e) { toast(e.message); }
+    });
+    $('#logo-file')?.addEventListener('change', async (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      const fd = new FormData();
+      fd.append('file', file);
+      try {
+        const res = await fetch('/admin/api/logo', { method: 'POST', body: fd, credentials: 'include' });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.detail || 'فشل رفع الشعار');
+        const preview = $('#logo-preview');
+        const adminLogo = $('#admin-logo');
+        const url = (data.logo || '/static/images/brand/logo.jpg') + '?v=' + Date.now();
+        if (preview) { preview.style.display = ''; preview.src = url; }
+        if (adminLogo) { adminLogo.style.display = ''; adminLogo.src = url; }
+        toast('تم رفع الشعار');
+      } catch (err) { toast(err.message); }
     });
   }
 

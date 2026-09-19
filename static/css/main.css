@@ -72,6 +72,15 @@ img { max-width: 100%; display: block; }
   flex-shrink: 0;
   box-shadow: 0 2px 8px rgba(75, 26, 12, .28);
 }
+.brand-fallback {
+  width: 52px; height: 52px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--primary);
+  color: #fff; font-weight: 800; font-size: 1.25rem;
+  flex-shrink: 0;
+}
+.brand-fallback.hidden { display: none !important; }
+body:not(.is-bbq) .hero-blob-icon { display: none; }
 .brand-name { font-weight: 800; font-size: 1.02rem; line-height: 1.2; color: var(--primary); }
 .brand-tag { font-size: .75rem; color: var(--text-muted); letter-spacing: .02em; }
 

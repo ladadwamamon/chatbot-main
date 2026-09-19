@@ -118,12 +118,40 @@
   function applyBranding() {
     const r = STATE.restaurant;
     if (!r) return;
-    document.title = `${r.name_en || 'Barbeque Pizza'} — ${r.name || ''}`;
+    const isBbq = /باربيكيو|barbeque/i.test(`${r.name || ''} ${r.name_en || ''}`);
+    document.body.classList.toggle('is-bbq', isBbq);
+    document.title = `${r.name_en || r.name || 'Menu'} — ${r.name || ''}`.replace(/ — $/, '');
     $('#brand-name').textContent = r.name || '';
     $('#brand-tag').textContent = r.name_en || '';
-    $('#footer-name').textContent = r.name || '';
+    const footerName = $('#footer-name');
+    if (footerName) footerName.textContent = r.name || '';
+    const footerTag = document.querySelector('.footer-tag');
+    if (footerTag) footerTag.textContent = r.name_en || r.tagline || '';
+    const chatTitle = document.querySelector('.chat-title');
+    if (chatTitle) chatTitle.textContent = r.name ? `مساعد ${r.name}` : 'المساعد';
 
-    const name = (r.name || 'بيتزا باربيكيو').trim();
+    const logo = $('#brand-logo');
+    const fallback = $('#brand-fallback');
+    const initial = ((r.name || r.name_en || 'م').trim()[0] || 'م');
+    if (fallback) fallback.textContent = initial;
+    if (logo) {
+      const src = r.theme?.logo;
+      if (src) {
+        logo.style.display = '';
+        logo.alt = r.name || '';
+        logo.src = src;
+        logo.onerror = () => {
+          logo.style.display = 'none';
+          if (fallback) fallback.classList.remove('hidden');
+        };
+        if (fallback) fallback.classList.add('hidden');
+      } else {
+        logo.style.display = 'none';
+        if (fallback) fallback.classList.remove('hidden');
+      }
+    }
+
+    const name = (r.name || '').trim();
     const parts = name.split(/\s+/);
     const accentEl = $('#hero-title-accent');
     const restEl = $('#hero-title-rest');
@@ -137,7 +165,7 @@
       }
     }
     const sub = $('#hero-sub');
-    if (sub) sub.textContent = r.tagline || 'مكونات أفضل | ألذ بيتزا';
+    if (sub) sub.textContent = r.tagline || (isBbq ? 'مكونات أفضل | ألذ بيتزا' : 'أهلاً بكم');
 
     if (r.theme?.primary) {
       document.documentElement.style.setProperty('--primary', r.theme.primary);
@@ -149,12 +177,17 @@
     const photo = $('#hero-photo');
     if (photo) {
       const items = (STATE.menu?.categories || []).flatMap((c) => c.items || []);
-      const preferred = items.find((i) => (i.image || '').includes('barbeque'))
+      const preferred = items.find((i) => i.image && (isBbq ? (i.image || '').includes('barbeque') : true))
         || items.find((i) => i.image);
       if (preferred?.image) {
+        photo.style.opacity = '';
         photo.src = `/img/${preferred.image}?w=900`;
         photo.alt = preferred.name || '';
         photo.onerror = () => { photo.style.opacity = '0'; };
+      } else if (!isBbq) {
+        photo.removeAttribute('src');
+        photo.style.opacity = '0';
+        photo.alt = '';
       }
     }
     renderHeroPicks();

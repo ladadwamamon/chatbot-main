@@ -19,7 +19,15 @@
     archived: 'مؤرشف',
   };
 
-  const WIZARD_STEPS = ['النشاط', 'التواصل', 'الاستضافة', 'الشات بوت', 'المراجعة'];
+  const WIZARD_STEPS = ['النشاط', 'الهوية', 'الاستضافة', 'الشات بوت', 'المراجعة'];
+  const PALETTES = [
+    { id: 'navy', primary: '#1e3a5f', dark: '#0f2744', label: 'كحلي' },
+    { id: 'forest', primary: '#1b4332', dark: '#081c15', label: 'أخضر' },
+    { id: 'wine', primary: '#6b2d3c', dark: '#3d1822', label: 'عنابي' },
+    { id: 'ember', primary: '#9a3412', dark: '#7c2d12', label: 'برتقالي' },
+    { id: 'slate', primary: '#334155', dark: '#1e293b', label: 'رمادي' },
+    { id: 'gold', primary: '#92400e', dark: '#78350f', label: 'ذهبي' },
+  ];
 
   const state = {
     wizard: null,
@@ -178,21 +186,27 @@
     const k = KIND[v.kind] || KIND.other;
     const health = v.last_health && typeof v.last_health === 'object' ? v.last_health
       : (v.last_health ? safeJson(v.last_health) : {});
-    const unreachable = health && health.unreachable;
+    const connected = health && health.ok === true;
+    const failed = health && health.ok === false;
+    const conn = connected
+      ? '<span class="pill live">متصل</span>'
+      : failed
+        ? '<span class="pill paused">غير متصل</span>'
+        : '<span class="pill kind">لم يُفحص</span>';
     return `
       <article class="venue-card" data-id="${v.id}">
         <div class="row">
           <div class="venue-ico">${k.ico}</div>
           <div>
             <h3>${esc(v.name)}</h3>
-            <div class="sub">${esc(v.slug)} ${v.public_url ? '· ' + esc(v.public_url.replace(/^https?:\/\//, '')) : ''}</div>
+            <div class="sub">${esc(v.slug)} ${v.public_url ? '· ' + esc(v.public_url.replace(/^https?:\/\//, '')) : (v.suggested_port ? '· :' + v.suggested_port : '')}</div>
           </div>
         </div>
         <div class="venue-meta">
           ${pillStatus(v.status)}
           <span class="pill kind">${esc(k.label)}</span>
           ${v.is_local ? '<span class="pill local">هذا السيرفر</span>' : ''}
-          ${unreachable ? '<span class="pill paused">غير متصل</span>' : ''}
+          ${conn}
         </div>
         <div class="venue-foot">
           <span>${v.last_latency_ms != null ? v.last_latency_ms + 'ms' : 'لم يُفحص'}</span>
@@ -263,9 +277,29 @@
     }
   }
 
+  function connBanner(snap, v) {
+    if (snap.ok) {
+      const via = snap.probed_url ? ` عبر <span class="mono">${esc(snap.probed_url)}</span>` : '';
+      const partial = snap.partial ? '<div class="hint">الموقع شغّال لكن أضف MANAGER_TOKEN للنسخة حتى يصير الوكيل كاملاً.</div>' : '';
+      const ident = snap.identity_applied ? '<div class="hint">تم دفع الاسم والألوان إلى النسخة.</div>' : '';
+      return `<div class="conn-banner ok"><strong>متصل</strong>${via}${partial}${ident}</div>`;
+    }
+    const tried = (snap.tried || []).map((t) => t.url).join('  ·  ');
+    return `<div class="conn-banner bad">
+      <strong>غير متصل</strong>
+      <p>${esc(snap.error || 'تعذر الوصول للنسخة')}</p>
+      ${tried ? `<p class="hint" dir="ltr" style="text-align:left">جُرّب: ${esc(tried)}</p>` : ''}
+      <p class="hint">إذا الموقع ظاهر للزبون بس اللوحة بتقول غير متصل: تأكد من منفذ Docker في البطاقة، وأن حاوية المنصة فيها host.docker.internal، وأن MANAGER_TOKEN يطابق السجل.</p>
+      ${v.suggested_port ? `<p class="hint">المنفذ المسجّل: <b>${esc(v.suggested_port)}</b></p>` : ''}
+    </div>`;
+  }
+
   function detailHtml(v, k, snap, chatbot, errorsHtml) {
     const ok = !!snap.ok;
+    const meta = v.meta || {};
+    const itemsTotal = snap.items?.total;
     return `
+      ${connBanner(snap, v)}
       <div class="detail-hero">
         <div>
           <div class="venue-meta" style="margin-bottom:8px">
@@ -288,18 +322,19 @@
         <div class="stat"><div class="k">طلبات اليوم</div><div class="v">${snap.orders?.today ?? '—'}</div></div>
         <div class="stat"><div class="k">محادثات اليوم</div><div class="v">${snap.chats?.today ?? '—'}</div></div>
         <div class="stat"><div class="k">توكنات اليوم</div><div class="v">${((snap.chats?.tokens_in_today||0)+(snap.chats?.tokens_out_today||0)) || '—'}</div></div>
-        <div class="stat"><div class="k">أخطاء مفتوحة</div><div class="v">${snap.errors?.open ?? '—'}</div></div>
+        <div class="stat"><div class="k">أصناف المنيو</div><div class="v">${itemsTotal ?? '—'}</div></div>
       </div>
 
       <div class="card">
         <div class="card-title">السيرفر</div>
         <div class="kv" style="margin-top:12px">
           <div class="k">الرابط</div><div>${v.public_url ? esc(v.public_url) : '— غير مربوط'}</div>
+          <div class="k">منفذ Docker</div><div>${v.suggested_port ?? '—'}</div>
           <div class="k">الاستجابة</div><div>${snap.latency_ms != null ? snap.latency_ms + ' ms' : '—'}</div>
           <div class="k">الإصدار</div><div>${esc(snap.version || '—')}</div>
           <div class="k">Gemini</div><div>${snap.gemini_configured == null ? '—' : (snap.gemini_configured ? 'مضبوط' : 'ناقص')}</div>
+          <div class="k">الاسم على النسخة</div><div>${esc(snap.restaurant_name || '—')}</div>
           <div class="k">آخر ظهور</div><div>${fmtDate(v.last_seen_at)}</div>
-          <div class="k">ملاحظة</div><div>${esc(snap.error || v.notes || '—')}</div>
         </div>
       </div>
 
@@ -315,11 +350,30 @@
             <select data-f="plan">${['starter','pro','custom'].map(p => `<option ${v.plan===p?'selected':''}>${p}</option>`).join('')}</select>
           </div>
           <div class="field full"><label>رابط السيرفر العام</label><input data-f="public_url" dir="ltr" placeholder="https://pizza.example.com" value="${esc(v.public_url || '')}"></div>
+          <div class="field"><label>منفذ Docker</label><input data-f="suggested_port" dir="ltr" inputmode="numeric" placeholder="8183" value="${esc(v.suggested_port || '')}"></div>
+          <div class="field"><label>Host داخلي (اختياري)</label><input data-f="server_host" dir="ltr" placeholder="host.docker.internal" value="${esc(v.server_host || '')}"></div>
           <div class="field"><label>اسم المسؤول</label><input data-f="contact_name" value="${esc(v.contact_name || '')}"></div>
           <div class="field"><label>هاتف المسؤول</label><input data-f="contact_phone" value="${esc(v.contact_phone || '')}"></div>
           <div class="field full"><label>ملاحظات داخلية</label><textarea data-f="notes">${esc(v.notes || '')}</textarea></div>
         </div>
         <div class="wizard-nav"><span></span><button class="btn primary" id="save-venue">حفظ البيانات</button></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">هوية المطعم على النسخة</div>
+        <p class="hint" style="margin:8px 0 12px">الاسم والألوان تروح للنسخة الشغّالة. الشعار يرفعه صاحب المطعم من /admin → الإعدادات.</p>
+        <div class="form-grid" id="ident-edit">
+          <div class="field full"><label>سطر تعريفي</label><input id="ident-tagline" value="${esc(meta.tagline || '')}" placeholder="أهلاً بكم"></div>
+          <div class="field"><label>اللون</label><input id="ident-primary" type="color" value="${esc(meta.primary_color || snap.theme?.primary || '#1e3a5f')}"></div>
+          <div class="field"><label>اللون الداكن</label><input id="ident-dark" type="color" value="${esc(meta.primary_color_dark || snap.theme?.primary_dark || '#0f2744')}"></div>
+        </div>
+        <div class="wizard-nav">
+          <span class="hint">${ok || v.is_local ? '' : 'اربط السيرفر أولاً'}</span>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            ${(!v.is_local && itemsTotal > 0) ? '<button class="btn ghost" id="reset-catalog">إفراغ منيو القالب</button>' : ''}
+            <button class="btn primary" id="apply-ident" ${ok || v.is_local ? '' : 'disabled'}>دفع الهوية للنسخة</button>
+          </div>
+        </div>
       </div>
 
       <div class="card">
@@ -353,7 +407,7 @@
           <div class="card-title">بيانات النشر</div>
           ${v.is_local ? '' : '<button class="btn ghost small" id="regen-token">توليد توكن جديد</button>'}
         </div>
-        <p class="hint">انسخها إلى Portainer لهذا العميل. لا تشاركها مع الزبائن.</p>
+        <p class="hint">انسخها إلى Portainer لهذا العميل. القالب مشترك، المنيو واللوجو والألوان خاصة بهذا المطعم (SKIP_SEED + مجلد brand فاضي).</p>
         <div class="kv" style="margin:12px 0">
           <div class="k">ADMIN_PASSWORD</div><div class="mono">${esc(v.admin_password || '')} <button class="btn small ghost" data-copy="${esc(v.admin_password || '')}">نسخ</button></div>
           <div class="k">MANAGER_TOKEN</div><div class="mono">${esc(v.manager_token || '')} <button class="btn small ghost" data-copy="${esc(v.manager_token || '')}">نسخ</button></div>
@@ -372,9 +426,40 @@
     $('#save-venue').addEventListener('click', async () => {
       const payload = {};
       $$('#venue-edit [data-f]').forEach((el) => { payload[el.dataset.f] = el.value; });
+      if ('suggested_port' in payload) {
+        const n = Number(payload.suggested_port);
+        if (!payload.suggested_port || Number.isNaN(n)) delete payload.suggested_port;
+        else payload.suggested_port = n;
+      }
       try {
         await api(`/manager/api/venues/${v.id}`, { method: 'PATCH', body: payload });
         toast('تم حفظ بيانات المطعم');
+        renderDetail(v.id);
+      } catch (e) { toast(e.message); }
+    });
+    $('#apply-ident')?.addEventListener('click', async () => {
+      try {
+        await api(`/manager/api/venues/${v.id}`, {
+          method: 'PATCH',
+          body: {
+            meta: {
+              tagline: $('#ident-tagline')?.value?.trim() || '',
+              primary_color: $('#ident-primary')?.value || '',
+              primary_color_dark: $('#ident-dark')?.value || '',
+            },
+          },
+        });
+        await api(`/manager/api/venues/${v.id}/apply-identity`, { method: 'POST' });
+        toast('تم دفع الهوية للنسخة');
+        renderDetail(v.id);
+      } catch (e) { toast(e.message); }
+    });
+    $('#reset-catalog')?.addEventListener('click', async () => {
+      if (!confirm('هذا يحذف أصناف وفئات القالب من النسخة. الطلبات ما بتنحذف. متابعة؟')) return;
+      try {
+        const r = await api(`/manager/api/venues/${v.id}/reset-catalog`, { method: 'POST' });
+        toast(`تم إفراغ المنيو (${r.items || 0} صنف)`);
+        renderDetail(v.id);
       } catch (e) { toast(e.message); }
     });
     $('#save-bot').addEventListener('click', async () => {
@@ -467,14 +552,19 @@
       kind: 'restaurant',
       name: '',
       name_en: '',
+      tagline: '',
       contact_name: '',
       contact_phone: '',
       notes: '',
-      mode: 'new', // new | connect
+      mode: 'new',
       public_url: '',
       manager_token: '',
+      suggested_port: '',
       welcome: '',
-      model: 'gemini-3.5-flash-lite',
+      model: 'gemini-3.6-flash',
+      primary: '#1e3a5f',
+      primary_dark: '#0f2744',
+      currency: '₪',
     };
   }
 
@@ -515,8 +605,11 @@
             </button>`).join('')}
         </div>
         <div class="form-grid" style="margin-top:16px">
-          <div class="field"><label>الاسم بالعربي</label><input id="w-name" value="${esc(w.name)}" placeholder="مثلاً: بيتزا باربيكيو"></div>
-          <div class="field"><label>الاسم بالإنجليزي (للرابط)</label><input id="w-name-en" dir="ltr" value="${esc(w.name_en)}" placeholder="Barbeque Pizza"></div>
+          <div class="field"><label>الاسم بالعربي</label><input id="w-name" value="${esc(w.name)}" placeholder="مثلاً: مطعم السعادة"></div>
+          <div class="field"><label>الاسم بالإنجليزي (للرابط)</label><input id="w-name-en" dir="ltr" value="${esc(w.name_en)}" placeholder="Al Saada"></div>
+          <div class="field full"><label>سطر تعريفي</label><input id="w-tagline" value="${esc(w.tagline)}" placeholder="أهلاً بكم — نكهتنا غير"></div>
+          <div class="field"><label>اسم المسؤول</label><input id="w-contact" value="${esc(w.contact_name)}" placeholder="اختياري"></div>
+          <div class="field"><label>الهاتف</label><input id="w-phone" value="${esc(w.contact_phone)}" placeholder="اختياري"></div>
         </div>`;
       $$('#kind-grid .choice').forEach((b) => b.addEventListener('click', () => {
         w.kind = b.dataset.kind;
@@ -524,11 +617,34 @@
       }));
     } else if (w.step === 1) {
       box.innerHTML = `
-        <div class="form-grid">
-          <div class="field"><label>اسم المسؤول عند العميل</label><input id="w-contact" value="${esc(w.contact_name)}" placeholder="أحمد"></div>
-          <div class="field"><label>هاتفه</label><input id="w-phone" value="${esc(w.contact_phone)}" placeholder="05…"></div>
+        <p class="hint" style="margin-bottom:12px">نفس قالب الموقع (QR، شات، سلة، إدارة) بدون منيو أو لوجو باربيكيو. الألوان هون، الشعار بعد التشغيل من لوحة المطعم.</p>
+        <div class="swatch-grid" id="palette-grid">
+          ${PALETTES.map((p) => `
+            <button type="button" class="swatch ${w.primary === p.primary ? 'on' : ''}" data-primary="${p.primary}" data-dark="${p.dark}">
+              <span class="swatch-chip" style="background:${p.primary}"></span>
+              <span>${p.label}</span>
+            </button>`).join('')}
+        </div>
+        <div class="brand-preview" style="--preview:${esc(w.primary)};--preview-dark:${esc(w.primary_dark)}">
+          <div class="bp-mark">${esc((w.name || 'م').trim()[0] || 'م')}</div>
+          <div>
+            <div class="bp-name">${esc(w.name || 'اسم المطعم')}</div>
+            <div class="bp-tag">${esc(w.tagline || w.name_en || 'سطر تعريفي')}</div>
+          </div>
+        </div>
+        <div class="form-grid" style="margin-top:16px">
+          <div class="field"><label>لون مخصص</label><input id="w-primary" type="color" value="${esc(w.primary)}"></div>
+          <div class="field"><label>اللون الداكن</label><input id="w-dark" type="color" value="${esc(w.primary_dark)}"></div>
+          <div class="field"><label>العملة</label><input id="w-currency" value="${esc(w.currency)}" placeholder="₪"></div>
           <div class="field full"><label>ملاحظات داخلية</label><textarea id="w-notes" placeholder="اتفاق، سعر الخطة، موعد التسليم…">${esc(w.notes)}</textarea></div>
         </div>`;
+      $$('#palette-grid .swatch').forEach((b) => b.addEventListener('click', () => {
+        w.primary = b.dataset.primary;
+        w.primary_dark = b.dataset.dark;
+        renderWizard();
+      }));
+      $('#w-primary')?.addEventListener('input', (e) => { w.primary = e.target.value; });
+      $('#w-dark')?.addEventListener('input', (e) => { w.primary_dark = e.target.value; });
     } else if (w.step === 2) {
       box.innerHTML = `
         <p class="hint" style="margin-bottom:12px">كل مطعم نسخة Docker مستقلة (سيرفر أو ستاك Portainer منفصل). هون بتحدد إذا عميل جديد أو سيرفر جاهز.</p>
@@ -545,7 +661,11 @@
         <div class="form-grid" style="margin-top:16px">
           <div class="field full"><label>رابط الموقع العام</label>
             <input id="w-url" dir="ltr" value="${esc(w.public_url)}" placeholder="https://cafe.example.com">
-            <span class="hint">${w.mode === 'connect' ? 'مطلوب للربط والفحص' : 'اختياري الآن، بتقدر تضيفه بعد النشر'}</span>
+            <span class="hint">${w.mode === 'connect' ? 'أو حط منفذ Docker إذا النسخة على نفس السيرفر' : 'اختياري الآن — المنصة بتفحص كمان عبر منفذ Docker'}</span>
+          </div>
+          <div class="field"><label>منفذ Docker على السيرفر</label>
+            <input id="w-port" dir="ltr" inputmode="numeric" value="${esc(w.suggested_port)}" placeholder="8183">
+            <span class="hint">نفس HOST_PORT في Portainer. مهم إذا الدومين مش واصل من جوّا Docker</span>
           </div>
           <div class="field full ${w.mode === 'connect' ? '' : 'hidden'}" id="w-token-wrap">
             <label>MANAGER_TOKEN الموجود على سيرفره</label>
@@ -559,7 +679,7 @@
       }));
     } else if (w.step === 3) {
       box.innerHTML = `
-        <p class="hint" style="margin-bottom:12px">قيم ابتدائية. بعد ما يصير السيرفر Live بتقدر تعدّلها من بطاقة المطعم.</p>
+        <p class="hint" style="margin-bottom:12px">قيم ابتدائية للشات. المنيو بيبدأ فاضي — صاحب المطعم يضيف الأصناف من لوحته.</p>
         <div class="form-grid">
           <div class="field"><label>موديل Gemini الابتدائي</label><input id="w-model" dir="ltr" value="${esc(w.model)}"></div>
           <div class="field full"><label>رسالة ترحيب مقترحة</label>
@@ -571,11 +691,13 @@
         <div class="kv">
           <div class="k">النوع</div><div>${esc((KIND[w.kind] || {}).label)}</div>
           <div class="k">الاسم</div><div>${esc(w.name)}</div>
-          <div class="k">المسؤول</div><div>${esc(w.contact_name || '—')}</div>
+          <div class="k">الهوية</div><div><span class="swatch-chip" style="background:${esc(w.primary)};display:inline-block;width:14px;height:14px;border-radius:4px;vertical-align:middle"></span> ${esc(w.tagline || '—')}</div>
+          <div class="k">المنيو</div><div>قالب فارغ — بدون أصناف باربيكيو</div>
           <div class="k">الاستضافة</div><div>${w.mode === 'connect' ? 'ربط سيرفر قائم' : 'توليد حزمة نشر'}</div>
           <div class="k">الرابط</div><div>${esc(w.public_url || '— لاحقاً')}</div>
+          <div class="k">المنفذ</div><div>${esc(w.suggested_port || 'يُختار تلقائياً')}</div>
         </div>
-        <p class="hint" style="margin-top:14px">بعد الإنشاء بتظهر كلمات السر مرة واحدة في صفحة المطعم — احفظها.</p>`;
+        <p class="hint" style="margin-top:14px">بعد الإنشاء بتظهر كلمات السر وملف Docker. الشعار يُرفع من لوحة المطعم.</p>`;
     }
   }
 
@@ -584,13 +706,18 @@
     const val = (id) => $(id)?.value?.trim() ?? w[id.replace('#w-', '').replace(/-/g, '_')];
     if ($('#w-name')) w.name = $('#w-name').value.trim();
     if ($('#w-name-en')) w.name_en = $('#w-name-en').value.trim();
+    if ($('#w-tagline')) w.tagline = $('#w-tagline').value.trim();
     if ($('#w-contact')) w.contact_name = $('#w-contact').value.trim();
     if ($('#w-phone')) w.contact_phone = $('#w-phone').value.trim();
     if ($('#w-notes')) w.notes = $('#w-notes').value.trim();
     if ($('#w-url')) w.public_url = $('#w-url').value.trim();
+    if ($('#w-port')) w.suggested_port = $('#w-port').value.trim();
     if ($('#w-token')) w.manager_token = $('#w-token').value.trim();
     if ($('#w-model')) w.model = $('#w-model').value.trim();
     if ($('#w-welcome')) w.welcome = $('#w-welcome').value.trim();
+    if ($('#w-primary')) w.primary = $('#w-primary').value;
+    if ($('#w-dark')) w.primary_dark = $('#w-dark').value;
+    if ($('#w-currency')) w.currency = $('#w-currency').value.trim() || '₪';
     return val;
   }
 
@@ -598,8 +725,11 @@
     const w = state.wizard;
     collectWiz();
     if (w.step === 0 && !w.name) { toast('الاسم مطلوب'); return; }
-    if (w.step === 2 && w.mode === 'connect' && (!w.public_url || !w.manager_token)) {
-      toast('الرابط والتوكن مطلوبان للربط'); return;
+    if (w.step === 2 && w.mode === 'connect' && !w.manager_token) {
+      toast('التوكن مطلوب للربط'); return;
+    }
+    if (w.step === 2 && w.mode === 'connect' && !w.public_url && !w.suggested_port) {
+      toast('الرابط أو منفذ Docker مطلوب للربط'); return;
     }
     if (w.step < WIZARD_STEPS.length - 1) {
       w.step += 1;
@@ -622,7 +752,15 @@
           notes: w.notes || null,
           manager_token: w.mode === 'connect' ? w.manager_token : null,
           connect_existing: w.mode === 'connect',
-          meta: { welcome: w.welcome, model: w.model },
+          suggested_port: w.suggested_port ? Number(w.suggested_port) : null,
+          meta: {
+            welcome: w.welcome,
+            model: w.model,
+            tagline: w.tagline,
+            primary_color: w.primary,
+            primary_color_dark: w.primary_dark,
+            currency: w.currency,
+          },
         },
       });
       state.wizard = null;
