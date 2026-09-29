@@ -6,6 +6,8 @@ import os
 import re
 import secrets
 import sqlite3
+import time
+from datetime import datetime, timezone
 from typing import Any, Optional
 
 from app.db import get_conn
@@ -14,6 +16,8 @@ from app.db import get_conn
 KINDS = ("restaurant", "cafe", "cloud_kitchen", "other")
 STATUSES = ("setup", "live", "paused", "archived")
 PLANS = ("starter", "pro", "custom")
+HEARTBEAT_FRESH_SEC = 120
+HEARTBEAT_STALE_SEC = 600
 
 
 def _slugify(name: str) -> str:
@@ -75,6 +79,90 @@ def get_venue(vid: int) -> dict[str, Any] | None:
 
 def get_local_venue() -> dict[str, Any] | None:
     return _row(get_conn().execute("SELECT * FROM venues WHERE is_local=1").fetchone())
+
+
+def get_venue_by_token(token: str) -> dict[str, Any] | None:
+    raw = (token or "").strip()
+    if not raw:
+        return None
+    row = get_conn().execute(
+        "SELECT * FROM venues WHERE manager_token=? LIMIT 1", (raw,)
+    ).fetchone()
+    return _row(row)
+
+
+def parse_sqlite_dt(s: str | None) -> float | None:
+    if not s:
+        return None
+    text = str(s).strip().replace("T", " ")
+    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M:%S.%f"):
+        try:
+            return datetime.strptime(text, fmt).replace(tzinfo=timezone.utc).timestamp()
+        except ValueError:
+            continue
+    return None
+
+
+def connection_state(venue: dict[str, Any]) -> dict[str, Any]:
+    """Live status from last heartbeat — not from hub probing the customer URL."""
+    if venue.get("is_local"):
+        return {"state": "local", "label": "هذا السيرفر", "ok": True, "age_sec": 0}
+    ts = parse_sqlite_dt(venue.get("last_seen_at"))
+    if ts is None:
+        return {"state": "never", "label": "بانتظار النبضة", "ok": False, "age_sec": None}
+    age = max(0, int(time.time() - ts))
+    if age <= HEARTBEAT_FRESH_SEC:
+        return {"state": "connected", "label": "متصل", "ok": True, "age_sec": age}
+    if age <= HEARTBEAT_STALE_SEC:
+        return {"state": "stale", "label": "تأخر", "ok": False, "age_sec": age}
+    return {"state": "offline", "label": "غير متصل", "ok": False, "age_sec": age}
+
+
+def enqueue_command(vid: int, kind: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+    conn = get_conn()
+    cur = conn.execute(
+        "INSERT INTO agent_commands(venue_id, kind, payload_json, status) VALUES(?,?,?, 'pending')",
+        (vid, kind, json.dumps(payload or {}, ensure_ascii=False)),
+    )
+    conn.commit()
+    row = conn.execute("SELECT * FROM agent_commands WHERE id=?", (cur.lastrowid,)).fetchone()
+    return _command_row(row)
+
+
+def list_pending_commands(vid: int, limit: int = 20) -> list[dict[str, Any]]:
+    rows = get_conn().execute(
+        "SELECT * FROM agent_commands WHERE venue_id=? AND status='pending' "
+        "ORDER BY id ASC LIMIT ?",
+        (vid, limit),
+    ).fetchall()
+    return [_command_row(r) for r in rows]
+
+
+def ack_command(cid: int, vid: int, *, ok: bool, error: str | None = None) -> bool:
+    conn = get_conn()
+    cur = conn.execute(
+        """UPDATE agent_commands SET status=?, ack_at=datetime('now'), error=?
+           WHERE id=? AND venue_id=? AND status='pending'""",
+        ("done" if ok else "failed", (error or "")[:300] or None, cid, vid),
+    )
+    conn.commit()
+    return cur.rowcount > 0
+
+
+def _command_row(row: sqlite3.Row | None) -> dict[str, Any]:
+    if row is None:
+        return {}
+    d = dict(row)
+    raw = d.pop("payload_json", None)
+    try:
+        d["payload"] = json.loads(raw) if raw else {}
+    except json.JSONDecodeError:
+        d["payload"] = {}
+    return d
+
+
+def hub_public_url() -> str:
+    return (os.getenv("HUB_PUBLIC_URL") or os.getenv("PUBLIC_URL") or "").strip().rstrip("/")
 
 
 def create_venue(data: dict[str, Any]) -> dict[str, Any]:
@@ -185,6 +273,7 @@ def delete_venue(vid: int) -> bool:
         return False
     if row["is_local"]:
         raise ValueError("لا يمكن حذف المطعم المحلي لهذه النسخة")
+    conn.execute("DELETE FROM agent_commands WHERE venue_id=?", (vid,))
     conn.execute("DELETE FROM venues WHERE id=?", (vid,))
     conn.commit()
     return True
@@ -215,8 +304,8 @@ def _env_line(key: str, value: Any) -> str:
 
 
 def compose_kit(venue: dict[str, Any]) -> dict[str, str]:
-    """Deploy kit: shared product template, per-tenant branding, empty menu."""
-    port = venue.get("suggested_port") or 8182
+    """Deploy kit for the customer's own VPS — phones home to the hub."""
+    port = venue.get("suggested_port") or 8080
     slug = venue["slug"]
     meta = venue.get("meta") or {}
     name = venue.get("name") or ""
@@ -224,9 +313,12 @@ def compose_kit(venue: dict[str, Any]) -> dict[str, str]:
     tagline = meta.get("tagline") or venue.get("restaurant_tagline") or ""
     primary = meta.get("primary_color") or "#1e3a5f"
     primary_dark = meta.get("primary_color_dark") or "#0f2744"
-    welcome = meta.get("welcome") or (f"أهلاً! أنا مساعد {name}. اسألني عن الأصناف أو الأسعار." if name else "")
+    welcome = meta.get("welcome") or (
+        f"أهلاً! أنا مساعد {name}. اسألني عن الأصناف أو الأسعار." if name else ""
+    )
     currency = meta.get("currency") or "₪"
     public_url = venue.get("public_url") or ""
+    hub = hub_public_url()
 
     env = "\n".join([
         _env_line("HOST_PORT", port),
@@ -237,6 +329,7 @@ def compose_kit(venue: dict[str, Any]) -> dict[str, str]:
         _env_line("ADMIN_SECRET", venue.get("admin_secret") or ""),
         _env_line("MANAGER_TOKEN", venue.get("manager_token") or ""),
         _env_line("PUBLIC_URL", public_url),
+        _env_line("HUB_URL", hub),
         _env_line("SKIP_SEED", "1"),
         _env_line("RESTAURANT_NAME", name),
         _env_line("RESTAURANT_NAME_EN", name_en),
@@ -246,7 +339,8 @@ def compose_kit(venue: dict[str, Any]) -> dict[str, str]:
         _env_line("CHATBOT_WELCOME", welcome),
         _env_line("CURRENCY", currency),
     ])
-    compose = f"""# Product template (QR, chat, cart, admin). Menu/logo/colors come from env + empty brand volume.
+    compose = f"""# Customer VPS stack. Same product template; empty menu + own branding.
+# The container phones {hub or 'HUB_URL'} every 30s — the hub does not need inbound access.
 version: "3.9"
 
 services:
@@ -256,8 +350,6 @@ services:
     restart: unless-stopped
     ports:
       - "${{HOST_PORT:-{port}}}:8000"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     environment:
       - APP_ENV=production
       - GEMINI_API_KEY=${{GEMINI_API_KEY}}
@@ -266,6 +358,7 @@ services:
       - ADMIN_SECRET=${{ADMIN_SECRET}}
       - MANAGER_TOKEN=${{MANAGER_TOKEN}}
       - PUBLIC_URL=${{PUBLIC_URL}}
+      - HUB_URL=${{HUB_URL}}
       - SKIP_SEED=${{SKIP_SEED:-1}}
       - RESTAURANT_NAME=${{RESTAURANT_NAME}}
       - RESTAURANT_NAME_EN=${{RESTAURANT_NAME_EN}}
@@ -290,4 +383,51 @@ volumes:
   {slug}_images:
   {slug}_brand:
 """
-    return {"env": env, "compose": compose, "container": slug, "port": str(port)}
+    bootstrap = """#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")"
+if ! command -v docker >/dev/null 2>&1; then
+  echo "Installing Docker…"
+  curl -fsSL https://get.docker.com | sh
+fi
+if ! docker compose version >/dev/null 2>&1; then
+  echo "docker compose plugin is required" >&2
+  exit 1
+fi
+if ! docker image inspect bbq-pizza:latest >/dev/null 2>&1; then
+  echo "Image bbq-pizza:latest is not on this host."
+  echo "Load it first:  docker load < bbq-pizza.tar"
+  echo "Or build from the project:  docker compose build"
+fi
+docker compose pull || true
+docker compose up -d
+echo "Up. The site will show as connected on the hub within ~30 seconds."
+"""
+
+    def _file_block(filename: str, content: str) -> str:
+        marker = "EOF_" + filename.replace(".", "_").replace("-", "_").upper()
+        while marker in content:
+            marker += "_X"
+        return f"cat > {filename} << '{marker}'\n{content.rstrip()}\n{marker}\n"
+
+    one_shot = (
+        "#!/usr/bin/env bash\n"
+        "set -euo pipefail\n"
+        f'DIR="$HOME/{slug}"\n'
+        'mkdir -p "$DIR"\n'
+        'cd "$DIR"\n'
+        + _file_block(".env", env)
+        + _file_block("docker-compose.yml", compose)
+        + _file_block("bootstrap.sh", bootstrap)
+        + "chmod +x bootstrap.sh\n"
+        'if [ "$(id -u)" -eq 0 ]; then ./bootstrap.sh; else sudo ./bootstrap.sh; fi\n'
+    )
+    return {
+        "env": env,
+        "compose": compose,
+        "bootstrap": bootstrap,
+        "one_shot": one_shot,
+        "container": slug,
+        "port": str(port),
+        "hub_url": hub,
+    }

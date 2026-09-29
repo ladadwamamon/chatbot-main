@@ -6,7 +6,7 @@ import time
 
 from app.db import all_settings, get_conn
 
-APP_VERSION = "1.2.0"
+APP_VERSION = "1.3.0"
 
 
 def local_snapshot() -> dict:
