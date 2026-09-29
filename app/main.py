@@ -38,6 +38,7 @@ from app.imgproxy import DEFAULT_WIDTH, get_or_create_variant
 from app.manager_routes import bootstrap_local_venue, router as manager_router
 from app.menu import format_menu_for_prompt, get_full_menu
 from app.tenant import apply_tenant_env, skip_seed
+from app.hub_client import hub_enabled, start_hub_client
 from app.tables import (
     build_scan_url,
     create_table,
@@ -98,10 +99,13 @@ async def _startup() -> None:
                 seed_all(force=False)
         except Exception:
             pass
-    try:
-        bootstrap_local_venue()
-    except Exception:
-        pass
+    if hub_enabled():
+        start_hub_client()
+    else:
+        try:
+            bootstrap_local_venue()
+        except Exception:
+            pass
 
 
 @app.get("/health")

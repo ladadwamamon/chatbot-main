@@ -334,6 +334,16 @@ pre.kit {
 }
 .conn-banner p { margin-top: 6px; color: var(--muted); font-size: .88rem; }
 .conn-banner .hint { margin-top: 6px; }
+.conn-banner.warn {
+  background: var(--warn-soft);
+  border-color: rgba(251,191,36,.4);
+}
+
+.install-card.awaiting {
+  border-color: rgba(99,102,241,.45);
+  box-shadow: 0 0 0 1px rgba(99,102,241,.18);
+}
+pre.kit.one-shot { max-height: 320px; }
 
 .swatch-grid {
   display: grid;

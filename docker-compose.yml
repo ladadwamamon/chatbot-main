@@ -21,6 +21,10 @@ services:
       - MANAGER_SECRET
       - MANAGER_TOKEN
       - PUBLIC_URL
+      # Hub's public URL — copied into each customer kit as HUB_URL
+      - HUB_PUBLIC_URL
+      # Satellites only: URL of the central manager. Leave unset on the hub itself.
+      - HUB_URL
     volumes:
       # Persistent SQLite database + WAL files
       - bbq_data:/app/data

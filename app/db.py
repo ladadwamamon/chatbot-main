@@ -142,6 +142,19 @@ CREATE TABLE IF NOT EXISTS venues (
   meta_json TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_venues_status ON venues(status);
+CREATE INDEX IF NOT EXISTS idx_venues_token ON venues(manager_token);
+
+CREATE TABLE IF NOT EXISTS agent_commands (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  venue_id INTEGER NOT NULL REFERENCES venues(id) ON DELETE CASCADE,
+  created_at TEXT DEFAULT (datetime('now')),
+  ack_at TEXT,
+  kind TEXT NOT NULL,
+  payload_json TEXT,
+  status TEXT DEFAULT 'pending',
+  error TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_agent_commands_venue ON agent_commands(venue_id, status);
 """
 
 
@@ -154,6 +167,22 @@ def _migrate() -> None:
     if "table_number" not in cols:
         conn.execute("ALTER TABLE orders ADD COLUMN table_number TEXT")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_orders_table ON orders(table_id)")
+    conn.execute(
+        """CREATE TABLE IF NOT EXISTS agent_commands (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          venue_id INTEGER NOT NULL REFERENCES venues(id) ON DELETE CASCADE,
+          created_at TEXT DEFAULT (datetime('now')),
+          ack_at TEXT,
+          kind TEXT NOT NULL,
+          payload_json TEXT,
+          status TEXT DEFAULT 'pending',
+          error TEXT
+        )"""
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_agent_commands_venue ON agent_commands(venue_id, status)"
+    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_venues_token ON venues(manager_token)")
     # Rebrand: migrate previous default reds to the restaurant brown.
     row = conn.execute("SELECT value FROM settings WHERE key='primary_color'").fetchone()
     if row and str(row["value"]).lower() in {"#e63946", "#c1121f"}:
