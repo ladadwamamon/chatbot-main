@@ -393,6 +393,5 @@ pre.kit.one-shot { max-height: 320px; }
   .sidebar.open { transform: translateX(0); }
   .icon-btn { display: inline-flex; align-items: center; justify-content: center; }
   .view, .topbar { padding-inline: 16px; }
-  .top-actions .btn.ghost { display: none; }
   .kv { grid-template-columns: 1fr; }
 }

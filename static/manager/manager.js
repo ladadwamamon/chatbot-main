@@ -53,7 +53,7 @@
     const el = $('#toast');
     el.textContent = msg;
     el.classList.remove('hidden');
-    setTimeout(() => el.classList.add('hidden'), 2400);
+    setTimeout(() => el.classList.add('hidden'), 4000);
   }
 
   function fmtDate(s) {
